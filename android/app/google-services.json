@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "20242419855",
+    "project_id": "touristsafety-realtimedatabase",
+    "storage_bucket": "touristsafety-realtimedatabase.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:20242419855:android:f22b3581181a3a3c38a0fa",
+        "android_client_info": {
+          "package_name": "com.example.tourist_safety_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBBkJIXDiLalMk9rHb4n02leUWZ3DSVKSM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
