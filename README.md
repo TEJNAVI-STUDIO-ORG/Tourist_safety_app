@@ -12,6 +12,8 @@ A comprehensive Flutter mobile app combined with IoT hardware for real-time tour
 - [Overview](#overview)
 - [Features](#features)
 - [Technical Stack](#technical-stack)
+- [Current Requirements](#current-requirements)
+- [Current Progress/Status](#current-progressstatus)
 - [Project Structure](#project-structure)
 - [Installation](#installation)
 - [Usage](#usage)
@@ -64,6 +66,20 @@ This repository contains the TouristSafe app, a product focused on improving tou
 | Auth | Firebase Authentication | User login and session management |
 | Push | Firebase Cloud Messaging | Push alert delivery |
 | Hardware | ESP32 / Arduino | IoT data acquisition |
+
+## Current requirements
+
+The current requirements of TouristSafe are to create a minimum viable product that proves a real-time safety workflow: live location tracking, geofence warnings, emergency SOS, and IoT device monitoring all connected through Firebase.
+
+## Current Progress/status
+
+- Product requirements and technical stack documented
+- Wireframes completed for dashboard, map, emergency, and settings
+- Firebase architecture and integration plan defined
+- Initial Flutter folder structure and feature layout drafted
+- SMS, geofencing, Google Maps, and IoT integration identified as core areas
+
+If you want, I can also merge this directly into README.md and update the table of contents.
 
 ## Project Structure
 
