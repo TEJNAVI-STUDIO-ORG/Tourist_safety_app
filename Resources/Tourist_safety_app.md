@@ -159,75 +159,20 @@ ESP32 → Firebase → Flutter App
 lib/
 ├── main.dart                          # App entry point
 ├── core/
-│   ├── constants/
-│   │   ├── app_constants.dart         # App-wide constants
-│   │   ├── colors.dart                # Color palette
-│   │   └── strings.dart               # Localized strings
-│   ├── themes/
-│   │   ├── app_theme.dart             # Light/dark theme definitions
-│   │   └── text_styles.dart           # Text style constants
-│   └── utils/
-│       ├── date_formatter.dart        # Date/time utilities
-│       ├── location_utils.dart        # Location helper functions
-│       └── permission_utils.dart      # Permission handling utilities
-├── services/
-│   ├── firebase_service.dart          # Firebase database operations
-│   ├── location_service.dart          # Location tracking and geofencing
-│   ├── geofence_service.dart          # Geofence zone management
-│   ├── sms_service.dart               # Emergency SMS sending
-│   ├── notification_service.dart      # Local notifications
-│   └── background_service.dart        # Background location updates
-├── models/
-│   ├── user_model.dart                # User data model
-│   ├── device_model.dart              # IoT device data model
-│   ├── location_model.dart            # Location data model
-│   ├── geofence_model.dart            # Geofence zone model
-│   ├── alert_model.dart               # Alert/notification model
-│   └── contact_model.dart             # Emergency contact model
-├── providers/
-│   ├── app_provider.dart              # Main app state provider
-│   ├── location_provider.dart         # Location state management
-│   ├── device_provider.dart           # Device data provider
-│   └── settings_provider.dart         # App settings provider
-├── screens/
-│   ├── dashboard_screen.dart          # Main dashboard/home screen
-│   ├── map_screen.dart                # Full tracking map screen
-│   ├── emergency_screen.dart          # SOS and emergency contacts
-│   └── settings_screen.dart           # Configuration and settings
-├── widgets/
-│   ├── common/
-│   │   ├── app_header.dart            # Top app bar with title and icon
-│   │   ├── bottom_navigation.dart     # Bottom tab navigation
-│   │   └── loading_indicator.dart     # Loading spinner
-│   ├── dashboard/
-│   │   ├── device_status_card.dart    # Device online/offline status
-│   │   ├── battery_level_bar.dart     # Battery percentage display
-│   │   ├── map_preview.dart           # Small map preview widget
-│   │   └── private_mode_toggle.dart   # Tracking on/off switch
-│   ├── map/
-│   │   ├── full_map_view.dart         # Full screen map component
-│   │   ├── danger_zone_marker.dart    # Danger zone visualization
-│   │   ├── location_marker.dart       # Current location pin
-│   │   └── safety_status_card.dart    # Safety status indicator
-│   ├── emergency/
-│   │   ├── sos_button.dart            # Large emergency button
-│   │   ├── contact_list.dart          # Emergency contacts display
-│   │   ├── call_button.dart           # Direct call button
-│   │   └── sms_button.dart            # SMS send button
-│   └── settings/
-│       ├── theme_setting.dart         # Light/dark mode selector
-│       ├── contact_section.dart       # Emergency contacts management
-│       ├── device_pairing.dart        # IoT device connection
-│       ├── alert_preferences.dart     # Notification settings
-│       └── api_config.dart            # Firebase/API settings
-├── config/
-│   ├── firebase_config.dart           # Firebase configuration
-│   └── api_keys.dart                  # API keys and secrets
-└── assets/
-    ├── images/                       # App images and icons
-    │   ├── icons/
-    │   └── wireframes/               # Wireframe screenshots
-    └── fonts/                        # Custom fonts if needed
+│   ├── constants/                     # App constants and themes
+│   ├── themes/                        # Theme and text styles
+│   └── utils/                         # Helper utilities
+├── services/                          # Firebase, location, SMS, notifications
+├── models/                            # Data models (device, location, geofence)
+├── providers/                         # State management providers
+├── screens/                           # App screens (dashboard, map, emergency, settings)
+├── widgets/                           # Reusable UI components
+├── config/                            # Firebase and API configuration
+└── assets/                            # Images and wireframes
+Resources/
+├── Tourist_safety_app.md              # Product requirements document
+├── Wireframing_doc.md                 # Wireframe specifications
+└── smart_tourist_safety_system/       # Wireframe HTML and screenshot files
 ```
 
 ## Data Model Idea
