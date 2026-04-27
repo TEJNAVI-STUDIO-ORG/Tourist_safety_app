@@ -159,28 +159,6 @@ This project uses:
 
 See `Resources/Tourist_safety_app.md` for full integration details.
 
-## Contributing
-
-Thank you for your interest in contributing!
-
-### How to contribute
-
-1. Fork the repository.
-2. Create a branch: `git checkout -b feature/your-feature`.
-3. Make your changes and test thoroughly.
-4. Submit a pull request with a clear summary.
-
-### Contribution priorities
-
-- Improve wireframes and UI components.
-- Add tests and quality checks.
-- Enhance Firebase and device integration.
-- Improve documentation and setup guidance.
-
-### Contributor resources
-
-- `Resources/Tourist_safety_app.md` for product requirements.
-- `Resources/Wireframing_doc.md` for screen design details.
 
 ## Roadmap
 
