@@ -24,9 +24,9 @@
 
 ### Product Vision
 
-A mobile app that helps tourists stay safe by combining **live tracking, geofencing, emergency alerts, and IoT-based device monitoring** in one dashboard.
+A mobile app that helps tourists stay safe by combining **live tracking, geofencing, and emergency alerts** in one dashboard.
 
-> "A Flutter-based tourist safety system that combines live location tracking, Firebase-backed IoT data sync, geofence warnings, and emergency SOS support."
+> "A Flutter-based tourist safety system that combines live location tracking, geofencing warnings, and emergency SOS support."
 
 ### Problem Statement
 
@@ -50,9 +50,7 @@ This app reduces that risk by showing live location, detecting danger zones, and
 - Detect danger zones using geofencing
 - Send SOS alerts instantly
 - Alert user when entering predefined danger zones
-- Read IoT device data from Firebase
 - One-tap SOS emergency messaging
-- Show device status, battery, and fall alerts (data read from Firebase)
 - Support privacy mode
 
 ## MVP Feature List
@@ -61,16 +59,12 @@ This app reduces that risk by showing live location, detecting danger zones, and
 
 - Google Maps live screen
 - Current location tracking
-- Firebase Realtime Database integration
-- Device status online/offline
 - SOS button with emergency contact
 - Geofence alert zones
 - Privacy mode toggle
 
 ### Should-Have
 
-- Battery level display
-- Fall detection alert from device
 - Push notifications
 - Emergency contact list
 
@@ -99,26 +93,14 @@ This app reduces that risk by showing live location, detecting danger zones, and
 | State Management       | Provider                             | Manage app state (location, device data)    |
 | UI Framework           | Material Design / Cupertino          | Consistent UI components                    |
 
-### Backend / Sync
+### Persistence
 
 | Component              | Technology / Service                 | Purpose                                      |
 |------------------------|--------------------------------------|----------------------------------------------|
-| Realtime Database      | Firebase Realtime Database           | Store and sync device data in real-time     |
-| Authentication         | Firebase Authentication              | User login and session management            |
-| Push Notifications     | Firebase Cloud Messaging             | Send push alerts to app                     |
-| SMS Service            | Twilio / Firebase Functions          | Send emergency SMS to contacts              |
-| Data Sync              | Firebase SDK                         | Real-time data synchronization               |
-
-### Hardware
-
-| Component              | Technology / Module                  | Purpose                                      |
-|------------------------|--------------------------------------|----------------------------------------------|
-| Microcontroller        | ESP32 / Arduino                      | Main processing unit for IoT device          |
-| GPS Module             | GPS Receiver (e.g., NEO-6M)          | Location tracking and coordinates           |
-| Accelerometer          | MPU-6050 / ADXL355                   | Fall detection and motion sensing           |
-| Battery Monitoring     | Voltage divider / ADC                | Monitor battery level                       |
-| Connectivity           | WiFi / Cellular (SIM800L)            | Send data to Firebase                       |
-| Power Management       | Battery + regulator                  | Efficient power usage                       |
+| Local Storage          | shared_preferences / hive / sqflite  | Persist settings, alerts, and cached data    |
+| Notifications          | flutter_local_notifications          | Local alerts and reminders                   |
+| SMS Service            | flutter_sms                          | Send emergency SMS to contacts               |
+                       |
 
 ## API / Integration List
 
@@ -129,14 +111,12 @@ For a clean v1, use these:
    - Show map
    - Render markers
    - Draw geofence zones
-2. **Firebase Realtime Database**
+2. **Local Device Storage**
 
-   - ESP32/Arduino connects to Firebase to send real-time data to fetch latitude and longitude
-   - Receive GPS coordinates
-   - Receive fall status
+   - Persist geofence settings, emergency contacts, and alert history on-device
+   - Cache current location and app state for offline use
+   - Keep data local and reduce cloud dependency
 
-   > "Firebase is used as a real-time intermediary between the IoT device and the mobile app to ensure scalable, asynchronous communication."
-   >
 3. **SMS to pre-selected emergency contacts**
 
    - Push SOS and location via SMS (with a message)
@@ -144,7 +124,7 @@ For a clean v1, use these:
 ### Integration Flow
 
 ```
-ESP32 → Firebase → Flutter App
+Flutter App → Local Storage → UI / Alerts
              ↓
         Geofence Logic
              ↓
@@ -162,12 +142,12 @@ lib/
 │   ├── constants/                     # App constants and themes
 │   ├── themes/                        # Theme and text styles
 │   └── utils/                         # Helper utilities
-├── services/                          # Firebase, location, SMS, notifications
-├── models/                            # Data models (device, location, geofence)
+├── services/                          # Local storage, location, SMS, notifications
+├── models/                            # Data models (location, geofence, contacts)
 ├── providers/                         # State management providers
 ├── screens/                           # App screens (dashboard, map, emergency, settings)
 ├── widgets/                           # Reusable UI components
-├── config/                            # Firebase and API configuration
+├── config/                            # API and app configuration
 └── assets/                            # Images and wireframes
 Resources/
 ├── Tourist_safety_app.md              # Product requirements document
@@ -177,96 +157,21 @@ Resources/
 
 ## Data Model Idea
 
-### Firebase Nodes
+## Local Storage Model
 
-- `/users/{userId}`
-- `/devices/{deviceId}`
-- `/devices/{deviceId}/location`
-- `/devices/{deviceId}/battery`
-- `/devices/{deviceId}/fall`
-- `/geofences/{zoneId}`
-- `/alerts/{alertId}`
-- `/contacts/{userId}`
+Use on-device storage for:
 
-### Example JSON Structure
+- User settings and emergency contacts
+- Geofence zones and alert rules
+- Cached location and recent alert history
 
-```json
-{
-  "users": {
-    "user_001": {
-      "name": "Rahul",
-      "email": "[rahul@email.com](mailto:rahul@email.com)",
-      "deviceId": "device_001",
-      "createdAt": 1710000000
-    }
-  },
-  "devices": {
-    "device_001": {
-      "meta": {
-        "name": "Tourist Device 1",
-        "assignedUser": "user_001"
-      },
-      "state": {
-        "online": true,
-        "lastUpdated": 1710000000
-      },
-      "location": {
-        "lat": 18.5204,
-        "lng": 73.8567,
-        "accuracy": 10,
-        "timestamp": 1710000000
-      },
-      "battery": {
-        "level": 78,
-        "charging": false,
-        "timestamp": 1710000000
-      },
-      "fall": {
-        "detected": false,
-        "lastFallTime": null
-      }
-    }
-  },
-  "geofences": {
-    "zone_001": {
-      "name": "Danger Area",
-      "type": "danger",
-      "center": {
-        "lat": 18.52,
-        "lng": 73.85
-      },
-      "radius": 200,
-      "createdAt": 1710000000
-    }
-  },
-  "alerts": {
-    "alert_001": {
-      "deviceId": "device_001",
-      "userId": "user_001",
-      "type": "geofence",
-      "message": "Entered danger zone",
-      "location": {
-        "lat": 18.5204,
-        "lng": 73.8567
-      },
-      "timestamp": 1710000000,
-      "status": "active"
-    }
-  },
-  "contacts": {
-    "user_001": {
-      "primary": {
-        "name": "Parent",
-        "phone": "+911234567890"
-      },
-      "secondary": {
-        "name": "Friend",
-        "phone": "+919876543210"
-      }
-    }
-  }
-}
-```
+Example local data model:
+
+- `settings`
+- `contacts`
+- `geofences`
+- `alerts`
+- `location_cache`
 
 ## Core User Flow
 
@@ -274,36 +179,34 @@ Resources/
 
 1. Open app
 2. See live location on map
-3. View device status
+3. View current safety status
 4. Enter or leave danger zone
 5. Get alert if needed
 6. Press SOS if emergency happens
 7. Send location to emergency contact
 
-### Device Flow
+### App Flow
 
-1. ESP32 reads GPS / accelerometer / battery
-2. Pushes data to Firebase
-3. App listens in real-time
-4. Dashboard updates instantly
+1. Open the app and request location permission
+2. Cache the latest location and geofence data locally
+3. Update the dashboard from local state
+4. Trigger alerts based on geofence logic
+5. Send SOS via SMS if needed
 
 ## Functional Requirements
 
 - App must show the user's current location
-- App must fetch hardware coordinates from Firebase
 - App must mark danger zones on the map
-- App must trigger alert when user enters zone
+- App must trigger alert when user enters a zone
 - App must allow SOS with one tap
-- App must show device online/offline state
-- App must show battery percentage
 - App must allow private mode toggle
-- App must receive fall detection alerts
+- App must persist emergency contacts and settings locally
 
 ## Non-Functional Requirements
 
 - Fast response time for alerts
 - Low battery usage
-- Secure Firebase rules
+- Secure local data storage
 - Reliable background updates
 - Clear UI
 - Works on Android and iOS if possible
@@ -319,9 +222,9 @@ Resources/
 
 **Mitigation:** Use accuracy checks and smooth updates.
 
-### Risk: Firebase Misuse
+### Risk: Local Storage Misuse
 
-**Mitigation:** Clean schema and strict security rules.
+**Mitigation:** Validate data formats and encrypt sensitive on-device values.
 
 ### Risk: Too Many Permissions
 
@@ -344,18 +247,17 @@ Resources/
   - Identity + safety tracking
 - **BUT:** Mostly theoretical / research-heavy, not practical mobile apps ([ResearchGate](https://www.researchgate.net/publication/400194378_AI-Powered_Smart_Tourist_Safety_System_with_Geo-Fencing_and_Blockchain_Identity?utm_source=chatgpt.com))
 
-### Smart Tourist Apps (Maps + Firebase)
+### Smart Tourist Apps (Maps)
 
 They use:
 
 - Google Maps APIs
-- Firebase (Auth, DB, Messaging)
 - GPS + real-time data ([ResearchGate](https://www.researchgate.net/publication/362209331_Smart_Tourist_Guide_Mobile_Application?utm_source=chatgpt.com))
 
 **BUT:**
 
 - Focus = **Tourism info (hotels, guides, routes)**
-- NOT safety + IoT + SOS combo
+- NOT safety + SOS combo
 
 ### Geofencing Apps (Closest Match Technically)
 
@@ -365,23 +267,22 @@ Features:
 
 - Map + geofence
 - Notification on entering area
-- Firebase + Google Maps integration ([GitHub](https://github.com/AliElDerawi/GeoAssistant?utm_source=chatgpt.com))
+- Google Maps integration ([GitHub](https://github.com/AliElDerawi/GeoAssistant?utm_source=chatgpt.com))
 
 **BUT:**
 
 - Only reminders (like "buy milk here")
 - No:
-  - IoT device
   - SOS system
   - Fall detection
   - Emergency contacts
 
-### IoT + Firebase Tracking Systems
+### Offline Geolocation Tracking Systems
 
 - Systems exist using:
-  - Sensors (Raspberry Pi / ESP32)
-  - Database real-time updates
-  - Alert notifications ([Google Maps Platform](https://mapsplatform.google.com/resources/blog/iot-proof-geolocation-and-firebase21?utm_source=chatgpt.com))
+  - Sensors and local processing
+  - Local persistence for cached location
+  - Alert notifications (Google Maps Platform resource)
 
 **BUT:**
 
@@ -399,7 +300,7 @@ Features:
 - Location update appears within a few seconds
 - SOS alert reaches contact reliably
 - Geofence alert fires correctly
-- Device status reflects actual hardware state
+- Status reflects current app state
 - App remains stable during background use
 
 ---
@@ -411,7 +312,7 @@ Features:
 | ---------------------------- | ---------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | Live map tracking            | Very practical and easy to demo    | GPS can be inaccurate indoors or in crowded places          | Show last known location, accuracy radius, and update only when movement changes |
 | Geofencing danger zones      | Strong safety feature              | Circle-based geofences can create false alerts              | Use dwell time, buffer zones, and allow manual zone editing                      |
-| Firebase realtime sync       | Fast to build, great for live data | Security rules and data structure can get messy             | Design clean database nodes and lock down rules from day 1                       |
+| Local persistence            | Fast to build and reliable when cached | Data model and storage format must stay simple            | Use a clean local model and cache only what the app needs |
 | SOS button                   | Easy to understand and useful      | SMS may fail if permissions/network are bad                 | Add fallback to phone call, push alert, and shareable live link                  |
 | Fall detection               | Makes the app feel "smart"         | False positives are common                                  | Use threshold + delay + cancel timer before sending alert                        |
 | Device online/offline status | Helpful for monitoring             | Can confuse users if the device is just temporarily delayed | Show "last updated time" and connection lag clearly                              |
@@ -434,7 +335,7 @@ Features:
    - **Fix:** Add debounce logic, confirmation delays, and user cancel options.
 4. **Internet dependence**
 
-   - Firebase and maps need connectivity.
+   - Maps need connectivity.
    - **Fix:** Cache last data locally and keep SOS fallback options.
 5. **Privacy concerns**
 
@@ -442,5 +343,5 @@ Features:
    - **Fix:** Clear consent, visible tracking status, and a real private mode.
 6. **Hardware dependency**
 
-   - If ESP32/Arduino fails, the app should still work partially.
-   - **Fix:** Make the mobile app usable even without IoT input.
+   - If external sensors fail, the app should still work partially.
+   - **Fix:** Make the mobile app usable even without external input.

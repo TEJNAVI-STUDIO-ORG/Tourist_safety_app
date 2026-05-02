@@ -2,10 +2,9 @@
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Flutter](https://img.shields.io/badge/Flutter-3.0+-02569B?logo=flutter)](https://flutter.dev/)
-[![Firebase](https://img.shields.io/badge/Firebase-Enabled-FFCA28?logo=firebase)](https://firebase.google.com/)
 [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-A comprehensive Flutter mobile app combined with IoT hardware for real-time tourist safety. The app uses live location tracking, geofencing alerts, emergency SOS, and Firebase-backed device monitoring to keep tourists secure.
+A comprehensive Flutter mobile app for real-time tourist safety. The app uses live location tracking, geofencing alerts, emergency SOS, and local persistence to keep tourists secure.
 
 ## Table of Contents
 
@@ -25,25 +24,21 @@ A comprehensive Flutter mobile app combined with IoT hardware for real-time tour
 
 ## Overview
 
-This repository contains the TouristSafe app, a product focused on improving tourist safety through a mobile app and IoT device integration. It is designed to be fully cross-platform with Flutter, supported by Firebase services, and connected to ESP32-based hardware for real-time sensor data.
+This repository contains the TouristSafe app, a product focused on improving tourist safety through a mobile app. It is designed to be fully cross-platform with Flutter, using local device storage and direct app state management.
 
 ## Features
 
 ### Core MVP
 
 - Real-time Google Maps location tracking
-- Firebase Realtime Database sync for IoT device data
 - SOS button with emergency SMS routing
 - Geofencing danger alerts with map visualization
-- Device online/offline status and battery monitoring
 - Privacy mode toggle
 - Emergency contact management
 
 ### Should-Have
 
-- Fall detection notifications
 - Push notifications for alerts
-- Battery level display
 
 ### Nice-to-Have
 
@@ -62,46 +57,106 @@ This repository contains the TouristSafe app, a product focused on improving tou
 | Permissions | permission_handler | Manage location and SMS permissions |
 | Notifications | flutter_local_notifications | Local alert notifications |
 | SMS | flutter_sms | Send emergency SMS messages |
-| Backend | Firebase Realtime Database | Real-time data sync |
-| Auth | Firebase Authentication | User login and session management |
-| Push | Firebase Cloud Messaging | Push alert delivery |
-| Hardware | ESP32 / Arduino | IoT data acquisition |
+| Persistence | shared_preferences / hive | Local storage for app state and cached data |
 
 ## Current requirements
 
-The current requirements of TouristSafe are to create a minimum viable product that proves a real-time safety workflow: live location tracking, geofence warnings, emergency SOS, and IoT device monitoring all connected through Firebase.
+The current requirements of TouristSafe are to create a minimum viable product that proves a real-time safety workflow: live location tracking, geofence warnings, emergency SOS, and local persistence.
 
 ## Current Progress/status
 
 - Product requirements and technical stack documented
 - Wireframes completed for dashboard, map, emergency, and settings
-- Firebase architecture and integration plan defined
+- Local storage and persistence design defined
 - Initial Flutter folder structure and feature layout drafted
-- SMS, geofencing, Google Maps, and IoT integration identified as core areas
+- SMS, geofencing, and Google Maps integration identified as core areas
 
 If you want, I can also merge this directly into README.md and update the table of contents.
 
 ## Project Structure
 
 ```
-lib/
-├── main.dart                          # App entry point
-├── core/
-│   ├── constants/                     # App constants and themes
-│   ├── themes/                        # Theme and text styles
-│   └── utils/                         # Helper utilities
-├── services/                          # Firebase, location, SMS, notifications
-├── models/                            # Data models (device, location, geofence)
-├── providers/                         # State management providers
-├── screens/                           # App screens (dashboard, map, emergency, settings)
-├── widgets/                           # Reusable UI components
-├── config/                            # Firebase and API configuration
-└── assets/                            # Images and wireframes
-Resources/
-├── Tourist_safety_app.md              # Product requirements document
-├── Wireframing_doc.md                 # Wireframe specifications
-└── smart_tourist_safety_system/       # Wireframe HTML and screenshot files
+.
+├── android/                           # Android platform project and Gradle build files
+│   ├── app/
+│   ├── build.gradle.kts
+│   ├── gradle.properties
+│   ├── gradlew
+│   ├── gradlew.bat
+│   └── settings.gradle.kts
+├── lib/                               # Flutter Dart application code
+│   ├── main.dart                      # App entry point
+│   ├── firebase_options.dart          # Generated Firebase config helper (legacy)
+│   ├── config/                        # App configuration files
+│   │   └── api_keys.dart              # Google Maps API key and app settings
+│   ├── core/                          # App constants, themes, and utility helpers
+│   │   ├── constants/
+│   │   │   ├── app_constants.dart
+│   │   │   ├── colors.dart
+│   │   │   └── strings.dart
+│   │   ├── themes/
+│   │   │   ├── app_theme.dart
+│   │   │   └── text_styles.dart
+│   │   └── utils/
+│   │       ├── date_formatter.dart
+│   │       ├── location_utils.dart
+│   │       └── permission_utils.dart
+│   ├── services/                      # Location, geofence, SMS, notification, background services
+│   │   ├── background_service.dart
+│   │   ├── firebase_service.dart
+│   │   ├── geofence_service.dart
+│   │   ├── location_service.dart
+│   │   ├── notification_service.dart
+│   │   └── sms_service.dart
+│   ├── models/                        # Data models used across the app
+│   │   ├── alert_model.dart
+│   │   ├── contact_model.dart
+│   │   ├── device_model.dart
+│   │   ├── geofence_model.dart
+│   │   ├── location_model.dart
+│   │   └── user_model.dart
+│   ├── providers/                     # State management providers
+│   │   ├── app_provider.dart
+│   │   ├── device_provider.dart
+│   │   ├── location_provider.dart
+│   │   └── settings_provider.dart
+│   ├── screens/                       # Main app screens
+│   │   ├── dashboard_screen.dart
+│   │   ├── emergency_screen.dart
+│   │   ├── map_screen.dart
+│   │   └── settings_screen.dart
+│   ├── widgets/                       # Reusable UI components
+│   │   ├── common/
+│   │   ├── dashboard/
+│   │   ├── emergency/
+│   │   ├── map/
+│   │   └── settings/
+│   └── assets/                        # Static assets
+│       ├── fonts/
+│       └── images/
+├── pubspec.yaml                       # Flutter package manifest
+├── firebase.json                      # Firebase config file (legacy / optional)
+├── android/app/google-services.json   # Android Firebase config (legacy / optional)
+├── README.md                          # Project documentation
+├── CONTRIBUTING.md                    # Contribution guidelines
+├── LICENSE                            # License file
+└── Resources/                         # Docs, wireframes, and planning artifacts
+    ├── Tourist_safety_app.md
+    ├── Wireframing_doc.md
+    └── smart_tourist_safety_system/    # Wireframe HTML and screenshot files
 ```
+
+> Note: The `android/` folder is separate from `lib/`. `lib/` contains your Flutter/Dart app code, while `android/` contains the native Android wrapper, build scripts, and Gradle config.
+
+## Resource Links
+
+- [Product Requirements Document](Resources/Tourist_safety_app.md)
+- [Wireframing Specifications](Resources/Wireframing_doc.md)
+- [Wireframe Assets and Screenshots](Resources/smart_tourist_safety_system/)
+- [Contribution Guidelines](CONTRIBUTING.md)
+- [License](LICENSE)
+- [Planning Document](Resources/planing.md)
+
 
 ## Installation
 
@@ -109,8 +164,6 @@ Resources/
 
 - Flutter SDK installed
 - Android Studio or VS Code with Flutter extensions
-- Firebase account
-- ESP32 hardware for IoT integration (optional for app development)
 
 ### Setup
 
@@ -125,16 +178,10 @@ Resources/
    flutter pub get
    ```
 
-3. Configure Firebase:
-   - Create a Firebase project.
-   - Enable Realtime Database, Authentication, and Cloud Messaging.
-   - Add `google-services.json` to `android/app/`.
-   - Add `GoogleService-Info.plist` to `ios/Runner/`.
-
-4. Configure API keys:
+3. Configure API keys:
    - Add Google Maps API key using `lib/config/api_keys.dart`.
 
-5. Run the app:
+4. Run the app:
    ```bash
    flutter run
    ```
@@ -143,26 +190,24 @@ Resources/
 
 - Open the app on a connected device or emulator.
 - Grant location and SMS permissions.
-- Connect or simulate IoT device data from Firebase.
-- Use the dashboard to monitor status, battery, and location.
+- Use the dashboard to monitor status and location.
 - Press the SOS button in case of emergency.
 
 ## API & Integrations
 
 This project uses:
 
-- Firebase Realtime Database for data storage and live sync.
-- Firebase Authentication for user login.
+- Local device storage for app data persistence and caching.
 - Google Maps API for map rendering and geofence visualization.
 - Flutter SMS for emergency messaging.
-- Firebase Cloud Messaging for push alerts.
+- Local notifications for push-style alerts.
 
 See `Resources/Tourist_safety_app.md` for full integration details.
 
 
 ## Roadmap
-
-- MVP: Live tracking, geofencing, SOS, Firebase sync.
+ 
+- MVP: Live tracking, geofencing, SOS, local persistence.
 - Next: Push notifications, battery alerts, offline behavior.
 - Future: Multi-language, alert history, admin dashboard.
 

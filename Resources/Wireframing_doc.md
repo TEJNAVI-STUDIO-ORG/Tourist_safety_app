@@ -57,14 +57,14 @@ This is the first screen the user sees after opening the app. It gives a quick s
 **1. App Header**
 Shows the app name “TouristSafe” and notification bell icon.
 
-**2. Device Status Card**
-Shows whether the IoT device is online or offline.
+**2. Status Card**
+Shows the current app or connection state.
 
 **3. Private Mode Toggle**
 Turns tracking on or off.
 
 **4. Battery Level Bar**
-Shows IoT device battery percentage.
+Shows the device battery percentage.
 
 **5. Map Preview**
 Shows a small live preview of the current location and danger zone.
@@ -245,7 +245,7 @@ Switches to other pages.
 
 ## Purpose
 
-This screen is for emergency contacts, IoT device setup, and API settings.
+This screen is for emergency contacts, app configuration, and API settings.
 
 ## Wireframe Preview
 
@@ -256,14 +256,13 @@ This screen is for emergency contacts, IoT device setup, and API settings.
 1. Theme Setting
 2. Emergency Contacts Section
 3. Add Contact Button
-4. IoT Device Pairing Section
-5. Connected Device Status
-6. Pair New Device Button
-7. Alert Preferences Section
-8. API Configuration Section
-9. Save Configuration Button
-10. About App Section
-11. Reset Settings Button
+4. Alert Preferences Section
+5. App Status Section
+6. Alert Preferences Section
+7. API Configuration Section
+8. Save Configuration Button
+9. About App Section
+10. Reset Settings Button
 
 ## Numbered Annotations and Behavior
 
@@ -276,20 +275,20 @@ Shows saved emergency contacts.
 **3. Add Contact Button**
 Opens form to add a new contact.
 
-**4. IoT Device Pairing Section**
-Shows connected hardware device.
+**4. Alert Preferences Section**
+Turns fall alerts and geofence alerts, push notifications, sms alerts on/off.
 
-**5. Connected Device Status**
-Displays connected or disconnected state.
+**5. App Status Section**
+Shows the current app or connection state.
 
-**6. Pair New Device Button**
-Starts device pairing flow.
+**6. API Configuration Section**
+Stores local settings and Google Maps API key.
 
-**7. Alert Preferences Section**
-Turns fall alerts and geofence alerts , push notifications, sms alerts on/off.
+**7. Save Button**
+Saves all configuration changes.
 
 **8. API Configuration Section**
-Stores Firebase URL and Google Maps API key.
+Stores local settings and Google Maps API key.
 
 **9. Save Button**
 Saves all configuration changes.
@@ -303,7 +302,7 @@ Restores default settings.
 ## Content Specifications
 
 * Contacts should show name and phone number
-* Device status should say connected or disconnected
+* App status should describe the current mode or connection state
 * API fields should be input fields
 * Save button should be clearly visible
 
@@ -317,7 +316,7 @@ Restores default settings.
 ## Error / Edge Cases
 
 * If API key is invalid, show warning
-* If device pairing fails, show retry option
+* If app settings fail to save, show retry option
 * If contact list is empty, show “No emergency contacts added”
 
 ---
@@ -366,13 +365,6 @@ Tabs:
 ---
 
 # Empty States
-
-## No Device Connected
-
-Show:
-
-* “No IoT device connected”
-* Pair New Device button
 
 ## No Emergency Contacts
 

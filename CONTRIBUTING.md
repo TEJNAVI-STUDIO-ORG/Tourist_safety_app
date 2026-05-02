@@ -17,7 +17,7 @@ Thank you for helping improve TouristSafe! This project is open to contributions
 ## Contribution Areas
 
 - UI/UX improvements
-- Firebase integration and backend logic
+- Local storage and app logic
 - Location and geofence behavior
 - SOS and SMS handling
 - Documentation updates
