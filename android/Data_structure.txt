@@ -1,0 +1,65 @@
+Directory Structure for: E:\Adi_32GR_files\MyCodingHelper\Projects\Multi_lang\Tourist_safety_app\android
+============================================================
+
+Root Directory: E:\Adi_32GR_files\MyCodingHelper\Projects\Multi_lang\Tourist_safety_app\android
+Excluded Items: node_modules, __pycache__, .git, .vscode, .venv, venv, .idea, py-gpt, venv3.10, bot_env, .gitignore, LICENSE, gradle-8.13, Data_structure.txt
+------------------------------------------------------------
+
+android/
+├── app/
+│   ├── build.gradle.kts
+│   ├── google-services.json
+│   └── src/
+│       ├── debug/
+│       │   └── AndroidManifest.xml
+│       ├── main/
+│       │   ├── AndroidManifest.xml
+│       │   ├── java/
+│       │   │   └── io/
+│       │   │       └── flutter/
+│       │   │           └── plugins/
+│       │   │               └── GeneratedPluginRegistrant.java
+│       │   ├── kotlin/
+│       │   │   └── com/
+│       │   │       └── example/
+│       │   │           └── tourist_safety_app/
+│       │   │               └── MainActivity.kt
+│       │   └── res/
+│       │       ├── drawable/
+│       │       │   └── launch_background.xml
+│       │       ├── drawable-v21/
+│       │       │   └── launch_background.xml
+│       │       ├── mipmap-hdpi/
+│       │       │   └── ic_launcher.png
+│       │       ├── mipmap-mdpi/
+│       │       │   └── ic_launcher.png
+│       │       ├── mipmap-xhdpi/
+│       │       │   └── ic_launcher.png
+│       │       ├── mipmap-xxhdpi/
+│       │       │   └── ic_launcher.png
+│       │       ├── mipmap-xxxhdpi/
+│       │       │   └── ic_launcher.png
+│       │       ├── values/
+│       │       │   └── styles.xml
+│       │       └── values-night/
+│       │           └── styles.xml
+│       └── profile/
+│           └── AndroidManifest.xml
+├── build.gradle.kts
+├── gradle/
+│   └── wrapper/
+│       ├── gradle-wrapper.jar
+│       └── gradle-wrapper.properties
+├── gradle.properties
+├── gradlew
+├── gradlew.bat
+├── local.properties
+├── settings.gradle.kts
+└── tourist_safety_app_android.iml
+
+------------------------------------------------------------
+SUMMARY
+Directories: 25
+Files: 27
+Total Size: 75.83 KB
+Generated on: 1777792932.4

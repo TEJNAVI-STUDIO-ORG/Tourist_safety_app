@@ -1,77 +1,246 @@
 import 'package:flutter/material.dart';
 
-class DashboardScreen extends StatelessWidget {
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+
+import 'package:provider/provider.dart';
+
+import '../providers/location_provider.dart';
+
+class DashboardScreen
+    extends StatelessWidget {
+
   @override
   Widget build(BuildContext context) {
+
+    final locationProvider =
+        Provider.of<LocationProvider>(
+          context,
+        );
+
+    // ⏳ WAIT FOR REAL LOCATION
+    if (locationProvider.latitude == null ||
+        locationProvider.longitude == null) {
+
+      return const Scaffold(
+        body: Center(
+          child:
+              CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final currentLocation = LatLng(
+      locationProvider.latitude!,
+      locationProvider.longitude!,
+    );
+
     return Scaffold(
+
       appBar: AppBar(
-        title: Text("TouristSafe"),
+
+        title: const Text(
+          "TouristSafe",
+        ),
+
         actions: [
+
           IconButton(
-            icon: Icon(Icons.notifications),
+            icon: const Icon(
+              Icons.notifications,
+            ),
             onPressed: () {},
-          )
+          ),
         ],
       ),
+
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+
+        padding:
+            const EdgeInsets.all(16),
+
         child: Column(
           children: [
 
-            // 🔹 Status Card
+            // 🟢 STATUS CARD
             Card(
+
               child: ListTile(
-                leading: Icon(Icons.shield, color: Colors.green),
-                title: Text("Status"),
-                subtitle: Text("Online"),
+
+                leading: const Icon(
+                  Icons.shield,
+                  color: Colors.green,
+                ),
+
+                title: const Text(
+                  "Status",
+                ),
+
+                subtitle: const Text(
+                  "Live Tracking Active",
+                ),
               ),
             ),
 
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
 
-            // 🔹 Private Mode Toggle
+            // 🔒 PRIVATE MODE
             SwitchListTile(
-              title: Text("Private Mode"),
+
+              title:
+                  const Text(
+                "Private Mode",
+              ),
+
               value: false,
+
               onChanged: (value) {},
             ),
 
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
 
-            // 🔹 Battery Bar
+            // 🔋 BATTERY
             Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+
               children: [
-                Text("Battery"),
-                LinearProgressIndicator(value: 0.7),
-                Text("70%"),
+
+                const Text("Battery"),
+
+                const SizedBox(height: 8),
+
+                LinearProgressIndicator(
+                  value: 0.7,
+                ),
+
+                const SizedBox(height: 5),
+
+                const Text("70%"),
               ],
             ),
 
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-            // 🔹 Map Preview (dummy)
+            // 🗺️ LIVE MAP PREVIEW
             Container(
-              height: 150,
-              width: double.infinity,
-              color: Colors.grey[300],
-              child: Center(
-                child: Text("Map Preview"),
+
+              height: 220,
+
+              decoration: BoxDecoration(
+                borderRadius:
+                    BorderRadius.circular(16),
+              ),
+
+              clipBehavior:
+                  Clip.hardEdge,
+
+              child: FlutterMap(
+
+                options: MapOptions(
+
+                  initialCenter:
+                      currentLocation,
+
+                  initialZoom: 15,
+                ),
+
+                children: [
+
+                  // 🌍 MAP
+                  TileLayer(
+
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+
+                    userAgentPackageName:
+                        'com.example.tourist_safety_app',
+                  ),
+
+                  // 📍 LIVE MARKER
+                  MarkerLayer(
+
+                    markers: [
+
+                      Marker(
+
+                        point:
+                            currentLocation,
+
+                        width: 40,
+                        height: 40,
+
+                        child: const Icon(
+                          Icons.location_pin,
+                          color: Colors.red,
+                          size: 40,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
 
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-            // 🔹 SOS Button
-            ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 20),
+            // 🚨 SOS BUTTON
+            SizedBox(
+
+              width: double.infinity,
+
+              child: ElevatedButton(
+
+                onPressed: () {},
+
+                style:
+                    ElevatedButton.styleFrom(
+
+                  backgroundColor:
+                      Colors.red,
+
+                  padding:
+                      const EdgeInsets.symmetric(
+                    vertical: 18,
+                  ),
+                ),
+
+                child: const Text(
+
+                  "SOS",
+
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-              child: Text(
-                "SOS",
-                style: TextStyle(fontSize: 20, color: Colors.white),
+            ),
+
+            const SizedBox(height: 20),
+
+            // 📍 LIVE COORDINATES
+            Card(
+
+              child: ListTile(
+
+                leading: const Icon(
+                  Icons.location_on,
+                ),
+
+                title: const Text(
+                  "Current Location",
+                ),
+
+                subtitle: Text(
+
+                  "Lat: "
+                  "${locationProvider.latitude!.toStringAsFixed(5)}\n"
+
+                  "Lng: "
+                  "${locationProvider.longitude!.toStringAsFixed(5)}",
+                ),
               ),
             ),
           ],

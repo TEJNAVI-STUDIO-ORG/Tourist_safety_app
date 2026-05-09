@@ -1,84 +1,219 @@
 import 'package:flutter/material.dart';
 
-class MapScreen extends StatelessWidget {
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+
+import 'package:provider/provider.dart';
+
+import '../providers/location_provider.dart';
+
+class MapScreen extends StatefulWidget {
+
+  const MapScreen({super.key});
+
+  @override
+  State<MapScreen> createState() =>
+      _MapScreenState();
+}
+
+class _MapScreenState
+    extends State<MapScreen> {
+
+  final MapController mapController =
+      MapController();
+
   @override
   Widget build(BuildContext context) {
+
+    final locationProvider =
+            Provider.of<LocationProvider>(
+              context,
+            );
+
+        if (locationProvider.latitude == null ||
+        locationProvider.longitude == null) {
+
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final currentLocation = LatLng(
+      locationProvider.latitude!,
+      locationProvider.longitude!,
+    );
+
+    // 🚀 AUTO RECENTER
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) {
+
+      mapController.move(
+        currentLocation,
+        15,
+      );
+    });
+
     return Scaffold(
+
       appBar: AppBar(
-        title: Text("Tracking Map"),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.layers),
-            onPressed: () {},
-          )
-        ],
+        title: const Text(
+          "Tracking Map",
+        ),
       ),
+
       body: Stack(
         children: [
 
-          // 🔹 Fake Map Background
-          Container(
-            color: Colors.grey[300],
-            child: Center(
-              child: Text("Map View (Google Maps later)"),
-            ),
-          ),
+          // 🗺️ MAP
+          FlutterMap(
 
-          // 🔴 Danger Zone (circle simulation)
-          Positioned(
-            top: 150,
-            left: 100,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.3),
-                shape: BoxShape.circle,
+            mapController:
+                mapController,
+
+            options: MapOptions(
+              initialCenter:
+                  currentLocation,
+
+              initialZoom: 15,
+            ),
+
+            children: [
+
+              // 🌍 TILE LAYER
+              TileLayer(
+
+                urlTemplate:
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+
+                userAgentPackageName:
+                    'com.example.tourist_safety_app',
               ),
-            ),
+
+              // 📍 LIVE LOCATION MARKER
+              MarkerLayer(
+
+                markers: [
+
+                  Marker(
+
+                    point:
+                        currentLocation,
+
+                    width: 80,
+                    height: 80,
+
+                    child: const Icon(
+                      Icons.location_pin,
+                      size: 40,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+
+              // 🔴 DANGER ZONE
+              CircleLayer(
+
+                circles: [
+
+                  CircleMarker(
+
+                    point:
+                        LatLng(
+                          18.5250,
+                          73.8600,
+                        ),
+
+                    radius: 80,
+
+                    color:
+                        Colors.red
+                            .withOpacity(0.3),
+
+                    borderColor:
+                        Colors.red,
+
+                    borderStrokeWidth: 2,
+                  ),
+                ],
+              ),
+            ],
           ),
 
-          // 📍 Current Location Marker
+          // 📍 LIVE STATUS CARD
           Positioned(
-            top: 200,
-            left: 160,
-            child: Icon(
-              Icons.location_pin,
-              size: 40,
-              color: Colors.blue,
-            ),
-          ),
 
-          // 🟢 Safety Status Card
-          Positioned(
             bottom: 100,
             left: 20,
             right: 20,
+
             child: Card(
+
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+
+                padding:
+                    const EdgeInsets.all(12),
+
                 child: Row(
                   children: [
-                    Icon(Icons.security, color: Colors.green),
-                    SizedBox(width: 10),
-                    Text("Status: Safe"),
+
+                    const Icon(
+                      Icons.security,
+                      color: Colors.green,
+                    ),
+
+                    const SizedBox(
+                      width: 10,
+                    ),
+
+                    Expanded(
+
+                      child: Text(
+
+                        "Lat: "
+                        "${locationProvider.latitude!.toStringAsFixed(5)}\n"
+
+                        "Lng: "
+                        "${locationProvider.longitude!.toStringAsFixed(5)}",
+
+                        style:
+                            const TextStyle(
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
           ),
 
-          // 🎯 Recenter Button
+          // 🎯 RECENTER BUTTON
           Positioned(
+
             bottom: 30,
             right: 20,
-            child: FloatingActionButton(
-              onPressed: () {},
-              child: Icon(Icons.my_location),
+
+            child:
+                FloatingActionButton(
+
+              onPressed: () {
+
+                mapController.move(
+                  currentLocation,
+                  15,
+                );
+              },
+
+              child: const Icon(
+                Icons.my_location,
+              ),
             ),
           ),
         ],
       ),
     );
-  }``
+  }
 }

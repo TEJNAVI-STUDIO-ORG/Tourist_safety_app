@@ -1,67 +1,180 @@
 import 'package:flutter/material.dart';
+
+import 'package:provider/provider.dart';
+
+import 'core/themes/app_theme.dart';
+
+import 'providers/app_provider.dart';
+import 'providers/location_provider.dart';
+import 'providers/settings_provider.dart';
+
 import 'screens/dashboard_screen.dart';
 import 'screens/map_screen.dart';
 import 'screens/emergency_screen.dart';
 import 'screens/settings_screen.dart';
 
 void main() {
-  runApp(TouristSafeApp());
-}
 
-class TouristSafeApp extends StatelessWidget {
-  const TouristSafeApp({super.key});
+  runApp(
 
-  @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'TouristSafe',
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData(primarySwatch: Colors.blue),
-    home: const MainNavigation(),
+    MultiProvider(
+
+      providers: [
+
+        ChangeNotifierProvider(
+          create: (_) => AppProvider(),
+        ),
+
+        ChangeNotifierProvider(
+          create: (_) => LocationProvider(),
+        ),
+
+        ChangeNotifierProvider(
+          create: (_) => SettingsProvider(),
+        ),
+      ],
+
+      child: const TouristSafeApp(),
+    ),
   );
 }
 
-class MainNavigation extends StatefulWidget {
+class TouristSafeApp
+    extends StatefulWidget {
+
+  const TouristSafeApp({
+    super.key,
+  });
+
   @override
-  _MainNavigationState createState() => _MainNavigationState();
+  State<TouristSafeApp>
+      createState() =>
+          _TouristSafeAppState();
 }
 
-class _MainNavigationState extends State<MainNavigation> {
-  int _currentIndex = 0;
+class _TouristSafeAppState
+    extends State<TouristSafeApp> {
 
-  final List<Widget> _screens = [
-    DashboardScreen(),
-    MapScreen(),
-    EmergencyScreen(),
-    SettingsScreen(),
-  ];
+  @override
+  void initState() {
+
+    super.initState();
+
+    Future.microtask(() {
+
+      Provider.of<LocationProvider>(
+        context,
+        listen: false,
+      ).startLiveTracking();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+
+    final settingsProvider =
+        Provider.of<SettingsProvider>(
+          context,
+        );
+
+    return MaterialApp(
+
+      debugShowCheckedModeBanner:
+          false,
+
+      theme: AppTheme.lightTheme,
+
+      darkTheme: AppTheme.darkTheme,
+
+      themeMode:
+          settingsProvider.darkMode
+              ? ThemeMode.dark
+              : ThemeMode.light,
+
+      home: const MainNavigation(),
+    );
+  }
+}
+
+class MainNavigation
+    extends StatefulWidget {
+
+  const MainNavigation({
+    super.key,
+  });
+
+  @override
+  State<MainNavigation>
+      createState() =>
+          _MainNavigationState();
+}
+
+class _MainNavigationState
+    extends State<MainNavigation> {
+
+  int currentIndex = 0;
+
+  late final List<Widget> screens;
+
+  @override
+  void initState() {
+
+    super.initState();
+
+    screens = [
+
+      DashboardScreen(),
+
+      const MapScreen(),
+
+      const EmergencyScreen(),
+
+      const SettingsScreen(),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
     return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
+
+      body: screens[currentIndex],
+
+      bottomNavigationBar:
+          BottomNavigationBar(
+
+        currentIndex: currentIndex,
+
         onTap: (index) {
+
           setState(() {
-            _currentIndex = index;
+            currentIndex = index;
           });
         },
-        items: [
+
+        type:
+            BottomNavigationBarType.fixed,
+
+        items: const [
+
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
-            label: 'Dashboard',
+            label: "Dashboard",
           ),
+
           BottomNavigationBarItem(
             icon: Icon(Icons.map),
-            label: 'Tracking',
+            label: "Tracking",
           ),
+
           BottomNavigationBarItem(
             icon: Icon(Icons.warning),
-            label: 'Emergency',
+            label: "Emergency",
           ),
+
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
-            label: 'Settings',
+            label: "Settings",
           ),
         ],
       ),
