@@ -1,0 +1,366 @@
+import 'dart:async';
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:sensors_plus/sensors_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vibration/vibration.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
+
+import '../core/global.dart';
+import '../models/notification_model.dart';
+import '../providers/notification_provider.dart';
+
+import 'system_status_service.dart';
+import 'notification_service.dart';
+
+class AdvancedFallDetectionService {
+  static bool _isProcessingFall = false;
+
+  static DateTime? _freeFallTime;
+
+  static StreamSubscription<AccelerometerEvent>? _subscription;
+
+  static BuildContext? navigatorContext;
+
+  static double currentMagnitude = 0;
+
+  static DateTime? lastSensorUpdate;
+
+  static Future<void> initialize(BuildContext context) async {
+    navigatorContext = context;
+
+    final prefs = await SharedPreferences.getInstance();
+
+    if (!(prefs.getBool('fallDetection') ?? true)) {
+      SystemStatusService.updateFallDetection(
+        context,
+        active: false,
+      );
+
+      return;
+    }
+
+    await WakelockPlus.enable();
+
+    SystemStatusService.updateFallDetection(
+      context,
+      active: true,
+    );
+
+    _startListening(context);
+  }
+
+  /// Called by NativeFallBridge when native service detects fall
+  static void triggerFallDialogFromNative() {
+    if (_isProcessingFall) return;
+
+    _isProcessingFall = true;
+
+    _showFallDialog();
+  }
+
+  static void _startListening(BuildContext context) {
+    _subscription?.cancel();
+
+    _subscription = accelerometerEventStream().listen((event) async {
+      if (_isProcessingFall) return;
+
+      final magnitude = sqrt(
+        event.x * event.x +
+            event.y * event.y +
+            event.z * event.z,
+      );
+
+      currentMagnitude = magnitude;
+
+      lastSensorUpdate = DateTime.now();
+
+      // LIVE STATUS UPDATE
+      SystemStatusService.updateFallDetection(
+        context,
+        active: true,
+      );
+
+      if (magnitude < 2.0) {
+        _freeFallTime = DateTime.now();
+      }
+
+      if (_freeFallTime != null &&
+          magnitude > 25) {
+        final diff =
+            DateTime.now()
+                .difference(_freeFallTime!)
+                .inMilliseconds;
+
+        if (diff < 1500) {
+          _isProcessingFall = true;
+
+          await _handlePossibleFall(event);
+        }
+      }
+    });
+  }
+
+  static Future<void> _handlePossibleFall(
+    AccelerometerEvent impactEvent,
+  ) async {
+    final initialTilt = impactEvent.z;
+
+    await Future<void>.delayed(
+      const Duration(seconds: 2),
+    );
+
+    AccelerometerEvent? newEvent;
+
+    final completer = Completer<void>();
+
+    late final StreamSubscription<
+        AccelerometerEvent> sub;
+
+    sub = accelerometerEventStream().listen(
+      (event) {
+        newEvent = event;
+
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
+      },
+    );
+
+    await completer.future.timeout(
+      const Duration(seconds: 3),
+    );
+
+    await sub.cancel();
+
+    final tiltDifference =
+        (initialTilt -
+                (newEvent?.z ?? 0))
+            .abs();
+
+    if (tiltDifference < 5) {
+      _reset();
+
+      return;
+    }
+
+    bool movementDetected = false;
+
+    final immobilitySub =
+        accelerometerEventStream().listen(
+      (event) {
+        final magnitude = sqrt(
+          event.x * event.x +
+              event.y * event.y +
+              event.z * event.z,
+        );
+
+        if ((magnitude - 9.8).abs() > 3) {
+          movementDetected = true;
+        }
+      },
+    );
+
+    await Future<void>.delayed(
+      const Duration(seconds: 4),
+    );
+
+    await immobilitySub.cancel();
+
+    if (movementDetected) {
+      _reset();
+
+      return;
+    }
+
+    await NotificationService.showNotification(
+      title: 'Possible Fall Detected',
+      body: 'Tap to confirm safety',
+    );
+
+    await _saveNotification(
+      title: 'Possible Fall Detected',
+      body: 'Possible fall detected by sensors',
+      type: 'fall',
+    );
+
+    if (await Vibration.hasVibrator()) {
+      Vibration.vibrate(duration: 1500);
+    }
+
+    _showFallDialog();
+  }
+
+  static void _showFallDialog() {
+    final ctx = navigatorKey.currentContext;
+
+    if (ctx == null) return;
+
+    Future<void>.delayed(
+      const Duration(milliseconds: 500),
+      () {
+        if (!ctx.mounted) return;
+
+        showDialog<void>(
+          context: ctx,
+          barrierDismissible: false,
+          builder: (dialogContext) =>
+              _FallCountdownDialog(
+            onSafe: _reset,
+            onEmergency: _triggerEmergency,
+          ),
+        );
+      },
+    );
+  }
+
+  static Future<void> _saveNotification({
+    required String title,
+    required String body,
+    required String type,
+  }) async {
+    final context =
+        navigatorKey.currentContext;
+
+    if (context == null) return;
+
+    final provider =
+        Provider.of<NotificationProvider>(
+      context,
+      listen: false,
+    );
+
+    await provider.addNotification(
+      AppNotification(
+        id: DateTime.now()
+            .millisecondsSinceEpoch
+            .toString(),
+        title: title,
+        body: body,
+        time: DateTime.now(),
+        severity: 'high',
+        type: type,
+      ),
+    );
+  }
+
+  static void _triggerEmergency() {
+    _reset();
+  }
+
+  static void _reset() {
+    _freeFallTime = null;
+
+    _isProcessingFall = false;
+  }
+
+  static void dispose() {
+    _subscription?.cancel();
+  }
+
+  static void startDetection() {
+    final ctx = navigatorKey.currentContext;
+    if (ctx != null) {
+      _startListening(ctx);
+    }
+  }
+
+  static void stopDetection() {
+    _subscription?.cancel();
+    _subscription = null;
+  }
+}
+
+class _FallCountdownDialog
+    extends StatefulWidget {
+  const _FallCountdownDialog({
+    required this.onEmergency,
+    required this.onSafe,
+  });
+
+  final VoidCallback onEmergency;
+
+  final VoidCallback onSafe;
+
+  @override
+  State<_FallCountdownDialog>
+      createState() =>
+          _FallCountdownDialogState();
+}
+
+class _FallCountdownDialogState
+    extends State<_FallCountdownDialog> {
+  int _countdown = 10;
+
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+      (Timer t) {
+        if (!mounted) {
+          t.cancel();
+
+          return;
+        }
+
+        setState(() {
+          _countdown--;
+        });
+
+        if (_countdown <= 0) {
+          t.cancel();
+
+          Navigator.of(
+            context,
+            rootNavigator: true,
+          ).pop();
+
+          widget.onEmergency();
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text(
+        'Possible Fall Detected',
+      ),
+
+      content: Text(
+        'Sending SOS in $_countdown seconds',
+      ),
+
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(
+              context,
+              rootNavigator: true,
+            ).pop();
+
+            widget.onSafe();
+          },
+
+          child: const Text(
+            'I AM SAFE',
+          ),
+        ),
+      ],
+    );
+  }
+}

@@ -3,53 +3,53 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/contact_model.dart';
+import '../services/sos_service.dart';
+import '../providers/system_status_provider.dart';
 
-class ContactModel {
-
-  final String name;
-  final String phone;
-
-  ContactModel({
-    required this.name,
-    required this.phone,
-  });
-
-  Map<String, dynamic> toJson() {
-
-    return {
-      "name": name,
-      "phone": phone,
-    };
-  }
-
-  factory ContactModel.fromJson(
-      Map<String, dynamic> json) {
-
-    return ContactModel(
-      name: json["name"],
-      phone: json["phone"],
-    );
-  }
-}
-
-class SettingsProvider
-    extends ChangeNotifier {
+class SettingsProvider extends ChangeNotifier {
 
   bool darkMode = true;
 
   bool geofenceAlerts = true;
 
   bool smsAlerts = true;
+
+  bool privateMode = false;
   
   bool pushNotifications = true;
 
+  bool fallDetection = true;
+
   List<ContactModel> contacts = [];
+
+  String sosMessageTemplate =
+    "🚨 EMERGENCY SOS!\n\n"
+    "I need help immediately.\n\n"
+    "My live location:\n"
+    "{location}";
+
+  // Reference to system status provider for updates
+  SystemStatusProvider? systemStatusProvider;
 
   SettingsProvider() {
 
     loadSettings();
   }
 
+  void setSystemStatusProvider(SystemStatusProvider provider) {
+    systemStatusProvider = provider;
+    // Check SOS status when provider is set
+    _updateSosStatus();
+  }
+
+  void _updateSosStatus() {
+    if (systemStatusProvider != null) {
+      SosService.checkAndUpdateSosStatus(
+        statusProvider: systemStatusProvider!,
+        settingsProvider: this,
+      );
+    }
+  }
 
   // 🌙 DARK MODE
   void toggleDarkMode() {
@@ -60,6 +60,19 @@ class SettingsProvider
 
     notifyListeners();
   }
+
+  void updateSosTemplate(
+      String message,
+    ) {
+
+      sosMessageTemplate = message;
+
+      saveSettings();
+
+      _updateSosStatus();
+
+      notifyListeners();
+    }
 
   // 📍 GEOFENCE
   void toggleGeofenceAlerts() {
@@ -82,12 +95,41 @@ class SettingsProvider
     notifyListeners();
   }
 
+  void togglePrivateMode() {
+
+    privateMode = !privateMode;
+
+    saveSettings();
+
+    notifyListeners();
+  }
+
+  // 🩹 FALL DETECTION
+  void toggleFallDetection() {
+
+    fallDetection =
+        !fallDetection;
+
+    saveSettings();
+
+    notifyListeners();
+  }
 
   // 🔔 PUSH
   void togglePushNotifications() {
 
     pushNotifications =
         !pushNotifications;
+
+    saveSettings();
+
+    notifyListeners();
+  }
+
+  // 📨 SAVE SOS TEMPLATE
+  void saveSOSTemplate(String message) {
+
+    sosMessageTemplate = message;
 
     saveSettings();
 
@@ -110,6 +152,8 @@ class SettingsProvider
 
     saveSettings();
 
+    _updateSosStatus();
+
     notifyListeners();
   }
 
@@ -120,6 +164,8 @@ class SettingsProvider
     contacts.removeAt(index);
 
     saveSettings();
+
+    _updateSosStatus();
 
     notifyListeners();
   }
@@ -140,6 +186,8 @@ class SettingsProvider
     );
 
     saveSettings();
+
+    _updateSosStatus();
 
     notifyListeners();
   }
@@ -169,6 +217,21 @@ class SettingsProvider
     await prefs.setBool(
       "pushNotifications",
       pushNotifications,
+    );
+
+    await prefs.setBool(
+      "privateMode",
+      privateMode,
+    );
+
+    await prefs.setString(
+      "sosMessageTemplate",
+      sosMessageTemplate,
+    );
+
+    await prefs.setBool(
+      "fallDetection",
+      fallDetection,
     );
 
     // CONTACTS
@@ -216,6 +279,27 @@ class SettingsProvider
         ) ??
         true;
 
+    privateMode =
+      prefs.getBool(
+        "privateMode",
+      ) ?? 
+      false;
+
+    fallDetection =
+      prefs.getBool(
+        "fallDetection",
+      ) ?? 
+      true;
+
+    sosMessageTemplate =
+    prefs.getString(
+      "sosMessageTemplate",
+    ) ??
+    "🚨 EMERGENCY SOS!\n\n"
+    "I need help immediately.\n\n"
+    "My live location:\n"
+    "{location}";
+
     // CONTACTS
     List<String>? contactList =
         prefs.getStringList(
@@ -246,6 +330,8 @@ class SettingsProvider
     smsAlerts = true;
 
     pushNotifications = true;
+
+    fallDetection = true;
 
     contacts.clear();
 

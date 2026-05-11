@@ -1,22 +1,72 @@
 import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../providers/location_provider.dart';
 import '../providers/settings_provider.dart';
 
 import '../services/sms_service.dart';
 
-class EmergencyScreen extends StatelessWidget {
+class EmergencyScreen
+    extends StatefulWidget {
 
-  const EmergencyScreen({super.key});
+  const EmergencyScreen({
+    super.key,
+  });
+
+  @override
+  State<EmergencyScreen>
+      createState() =>
+          _EmergencyScreenState();
+}
+
+class _EmergencyScreenState
+    extends State<EmergencyScreen> {
+
+  late TextEditingController
+      messageController;
+
+  @override
+  void initState() {
+
+    super.initState();
+
+    final settingsProvider =
+        Provider.of<SettingsProvider>(
+
+      context,
+      listen: false,
+    );
+
+    messageController =
+        TextEditingController(
+
+      text:
+          settingsProvider
+              .sosMessageTemplate,
+    );
+  }
+
+  @override
+  void dispose() {
+
+    messageController.dispose();
+
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
 
     final settingsProvider =
-        Provider.of<SettingsProvider>(context);
+        Provider.of<SettingsProvider>(
+      context,
+    );
+
+    final locationProvider =
+        Provider.of<LocationProvider>(
+      context,
+    );
 
     final contacts =
         settingsProvider.contacts;
@@ -24,26 +74,26 @@ class EmergencyScreen extends StatelessWidget {
     return Scaffold(
 
       appBar: AppBar(
-        title: const Text("Emergency"),
+        title: const Text(
+          "Emergency",
+        ),
       ),
 
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+
+        padding:
+            const EdgeInsets.all(16),
 
         child: Column(
+
           children: [
 
-            // 🚨 SOS BUTTON
+            // 🚨 BIG SOS
             Center(
+
               child: ElevatedButton(
 
                 onPressed: () async {
-
-                  final locationProvider =
-                      Provider.of<LocationProvider>(
-                        context,
-                        listen: false,
-                      );
 
                   await locationProvider
                       .getCurrentLocation();
@@ -56,34 +106,63 @@ class EmergencyScreen extends StatelessWidget {
                           )
                           .toList();
 
-                  await Permission.sms.request();
+                  final locationText =
+                      "Google Maps: "
+                      "https://maps.google.com/?q="
+                      "${locationProvider.latitude},${locationProvider.longitude}";
+
+                      "Latitude: "
+                      "${locationProvider.latitude}\n"
+
+                      "Longitude: "
+                      "${locationProvider.longitude}";
+
+
+                  final finalMessage =
+
+                      messageController.text
+                          .replaceAll(
+                    "{location}",
+                    locationText,
+                  );
 
                   await SmsService.sendSOS(
 
-                    recipients: phoneNumbers,
+                    recipients:
+                        phoneNumbers,
 
                     message:
-                        "🚨 EMERGENCY SOS!\n\n"
-                        "I need help immediately.\n\n"
-                        "Live Location:\n"
-                        "Latitude: ${locationProvider.latitude}\n"
-                        "Longitude: ${locationProvider.longitude}",
+                        finalMessage,
                   );
                 },
 
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  shape: const CircleBorder(),
-                  padding: const EdgeInsets.all(60),
+                style:
+                    ElevatedButton.styleFrom(
+
+                  backgroundColor:
+                      Colors.red,
+
+                  shape:
+                      const CircleBorder(),
+
+                  padding:
+                      const EdgeInsets.all(
+                    60,
+                  ),
                 ),
 
                 child: const Text(
+
                   "SOS",
 
                   style: TextStyle(
+
                     fontSize: 28,
+
                     color: Colors.white,
-                    fontWeight: FontWeight.bold,
+
+                    fontWeight:
+                        FontWeight.bold,
                   ),
                 ),
               ),
@@ -91,115 +170,262 @@ class EmergencyScreen extends StatelessWidget {
 
             const SizedBox(height: 30),
 
-            // 📞 CONTACT TITLE
+            // 📞 CONTACTS
             const Align(
-              alignment: Alignment.centerLeft,
+
+              alignment:
+                  Alignment.centerLeft,
 
               child: Text(
+
                 "Emergency Contacts",
 
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+
+                  fontSize: 20,
+
+                  fontWeight:
+                      FontWeight.bold,
                 ),
               ),
             ),
 
             const SizedBox(height: 10),
 
-            // 📋 CONTACT LIST
-            Expanded(
+            contacts.isEmpty
 
-              child: contacts.isEmpty
+                ? const Padding(
 
-                  ? const Center(
-                      child: Text(
-                        "No contacts added yet",
-                      ),
-                    )
+                    padding:
+                        EdgeInsets.all(20),
 
-                  : ListView.builder(
+                    child: Text(
+                      "No contacts added",
+                    ),
+                  )
 
-                      itemCount: contacts.length,
+                : ListView.builder(
 
-                      itemBuilder: (context, index) {
+                    shrinkWrap: true,
 
-                        final contact =
-                            contacts[index];
+                    physics:
+                        const NeverScrollableScrollPhysics(),
 
-                        return Card(
+                    itemCount:
+                        contacts.length,
 
-                          child: ListTile(
+                    itemBuilder:
+                        (context, index) {
 
-                            leading: const CircleAvatar(
-                              child: Icon(Icons.person),
-                            ),
+                      final contact =
+                          contacts[index];
 
-                            title: Text(
-                              contact.name,
-                            ),
+                      return Card(
 
-                            subtitle: Text(
-                              contact.phone,
-                            ),
+                        child: ListTile(
 
-                            trailing: Row(
-                              mainAxisSize:
-                                  MainAxisSize.min,
+                          leading:
+                              const CircleAvatar(
 
-                              children: [
-
-                                // 📞 CALL
-                                IconButton(
-
-                                  icon: const Icon(
-                                    Icons.call,
-                                    color: Colors.green,
-                                  ),
-
-                                  onPressed: () {},
-                                ),
-
-                                // 💬 SMS
-                                IconButton(
-
-                                  icon: const Icon(
-                                    Icons.message,
-                                    color: Colors.blue,
-                                  ),
-
-                                  onPressed: () {},
-                                ),
-                              ],
+                            child: Icon(
+                              Icons.person,
                             ),
                           ),
-                        );
-                      },
-                    ),
+
+                          title: Text(
+                            contact.name,
+                          ),
+
+                          subtitle: Text(
+                            contact.phone,
+                          ),
+
+                          trailing: Row(
+
+                            mainAxisSize:
+                                MainAxisSize.min,
+
+                            children: [
+
+                              // 📞 CALL
+                              IconButton(
+
+                                icon:
+                                    const Icon(
+
+                                  Icons.call,
+
+                                  color:
+                                      Colors.green,
+                                ),
+
+                                onPressed:
+                                    () async {
+
+                                  await SmsService
+                                      .makeCall(
+                                    contact.phone,
+                                  );
+                                },
+                              ),
+
+                              // 💬 SMS
+                              IconButton(
+
+                                icon:
+                                    const Icon(
+
+                                  Icons.message,
+
+                                  color:
+                                      Colors.blue,
+                                ),
+
+                                onPressed:
+                                    () async {
+
+                                  await SmsService
+                                      .openSMS(
+
+                                    phone:
+                                        contact.phone,
+
+                                    message:
+                                        "Hey, I may need help.",
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
+            const SizedBox(height: 25),
+
+            // 📨 TEMPLATE TITLE
+            const Align(
+
+              alignment:
+                  Alignment.centerLeft,
+
+              child: Text(
+
+                "SOS Message Template",
+
+                style: TextStyle(
+
+                  fontSize: 20,
+
+                  fontWeight:
+                      FontWeight.bold,
+                ),
+              ),
             ),
 
             const SizedBox(height: 10),
 
-            // 📨 ALERT PREVIEW
+            // 📝 TEMPLATE FIELD
+            TextField(
+
+              controller:
+                  messageController,
+
+              maxLines: 8,
+
+              decoration:
+                  InputDecoration(
+
+                hintText:
+                    "Write SOS message...",
+
+                border:
+                    OutlineInputBorder(
+
+                  borderRadius:
+                      BorderRadius.circular(
+                    12,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            // 💾 SAVE TEMPLATE
+            SizedBox(
+
+              width: double.infinity,
+
+              child: ElevatedButton.icon(
+
+                onPressed: () {
+
+                  Provider.of<SettingsProvider>(
+
+                    context,
+                    listen: false,
+
+                  ).saveSOSTemplate(
+
+                    messageController.text,
+                  );
+
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(
+
+                    const SnackBar(
+
+                      content: Text(
+                        "SOS template saved",
+                      ),
+                    ),
+                  );
+                },
+
+                icon: const Icon(
+                  Icons.save,
+                ),
+
+                label: const Text(
+                  "Save Template",
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // 📍 LOCATION TOKEN INFO
             Container(
 
               width: double.infinity,
 
-              padding: const EdgeInsets.all(16),
+              padding:
+                  const EdgeInsets.all(
+                16,
+              ),
 
               decoration: BoxDecoration(
-                color: Colors.grey.shade800,
+
+                color:
+                    Theme.of(context)
+                        .cardColor,
+
                 borderRadius:
-                    BorderRadius.circular(12),
+                    BorderRadius.circular(
+                  12,
+                ),
               ),
 
               child: const Text(
 
-                "SOS Alert Preview:\n"
-                "I need help. My live location will be shared.",
+                "Use:\n\n"
+                "{location}\n\n"
+                "inside message to automatically insert live coordinates.",
 
                 style: TextStyle(
-                  color: Colors.white,
+                  fontSize: 15,
                 ),
               ),
             ),

@@ -1,5 +1,5 @@
 name: tourist_safety_app
-description: "A new Flutter project."
+description: "A comprehensive Flutter mobile app combined with IoT hardware for real-time tourist safety. The app uses live location tracking, geofencing alerts, emergency SOS, and Firebase-backed device monitoring to keep tourists secure."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 2.2.0-alpha
 
 environment:
   sdk: ^3.11.5
@@ -37,27 +37,53 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  # url_launcher: ^6.3.2
+  battery_plus: ^6.0.2
+  url_launcher: ^6.3.0
   shared_preferences: ^2.5.3
   permission_handler: ^12.0.1
+  flutter_local_notifications: ^17.2.2
+  timezone: ^0.9.4
+  sensors_plus: ^6.1.1
+  vibration: ^3.1.0
+  wakelock_plus: ^1.2.8
+  timeago: ^3.7.0
+  flutter_background_service: ^5.0.5
+  flutter_background_service_android: ^6.2.2
+  http: ^1.2.1
+  disable_battery_optimization: ^1.1.1
+
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
+  flutter_launcher_icons: ^0.14.1
+
+  flutter_native_splash: ^2.4.1
+
   flutter_lints: ^6.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
+flutter_native_splash:
+  color: "#0F172A"
+  image: assets/images/splash_logo.png
+
+  android_12:
+    image: assets/images/splash_logo.png
+    color: "#0F172A"
+
+flutter_launcher_icons:
+  android: true
+  image_path: "assets/images/logo.png"
+  adaptive_icon_background: "#0F172A"
+  adaptive_icon_foreground: "assets/images/logo.png"
+
 # The following section is specific to Flutter packages.
 flutter:
-
+  assets:
+    - assets/images/
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
