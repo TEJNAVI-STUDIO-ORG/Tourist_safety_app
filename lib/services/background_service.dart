@@ -97,7 +97,7 @@ void onStart(ServiceInstance service) async {
   await _loadZones();
 
   // Refresh zones every 12 mins
-  Timer.periodic(const Duration(minutes: 12), (timer) async {
+  Timer.periodic(const Duration(minutes: 10), (timer) async {
     await _refreshZonesFromOverpass();
   });
 
@@ -145,7 +145,7 @@ Future<void> _refreshZonesFromOverpass() async {
     final elements = await OverpassService.fetchNearbyHazards(
       lat: position.latitude,
       lng: position.longitude,
-      statusProvider: null, // Background service runs independently
+      statusProvider: null, // Background service runs independently : but why??
     );
     final zones = ZoneEngineService.generateZones(elements);
     if (zones.isEmpty) return;

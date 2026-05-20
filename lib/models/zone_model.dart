@@ -28,4 +28,47 @@ class ZoneModel {
     required this.riskScore,
     required this.severity,
   });
+
+  // =========================
+  // TO JSON
+  // =========================
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'type': type,
+      'name': name,
+      'latitude': center.latitude,
+      'longitude': center.longitude,
+      'radius': radius,
+      'color': color.value,
+      'riskScore': riskScore,
+      'severity': severity,
+    };
+  }
+
+  // =========================
+  // FROM JSON
+  // =========================
+  factory ZoneModel.fromJson(Map<String, dynamic> json) {
+    return ZoneModel(
+      id: json['id'],
+
+      type: json['type'],
+
+      name: json['name'],
+
+      center: LatLng(
+        json['latitude'],
+        json['longitude'],
+      ),
+
+      radius: (json['radius'] as num).toDouble(),
+
+      color: Color(json['color']),
+
+      riskScore: json['riskScore'],
+
+      severity: json['severity'],
+    );
+  }
 }

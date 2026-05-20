@@ -1,16 +1,36 @@
+import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class PermissionService {
-
   static Future<void> requestAllPermissions() async {
+    // =========================
+    // LOCATION SERVICE ENABLE
+    // =========================
 
-    // Foreground location first
+    bool serviceEnabled =
+        await Geolocator.isLocationServiceEnabled();
+
+    if (!serviceEnabled) {
+      await Geolocator.openLocationSettings();
+    }
+
+    // =========================
+    // FOREGROUND LOCATION
+    // =========================
+
     await Permission.location.request();
 
-    // Background location after foreground granted
+    // =========================
+    // BACKGROUND LOCATION
+    // =========================
+
     if (await Permission.location.isGranted) {
       await Permission.locationAlways.request();
     }
+
+    // =========================
+    // OTHER PERMISSIONS
+    // =========================
 
     await [
       Permission.sms,

@@ -28,10 +28,10 @@ import 'screens/loading_screen.dart';
 
 import './core/global.dart';
 
-
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await PermissionService.requestAllPermissions();
 
   // Never block the first frame on plugin init (can hang on some OEMs).
   unawaited(
@@ -76,6 +76,15 @@ class _TouristSafeAppState extends State<TouristSafeApp> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final location = context.read<LocationProvider>();
+      final zone = context.read<ZoneProvider>();
+      final status = context.read<SystemStatusProvider>();
+
+      zone.triggerInitialLoad(
+        context: context,
+        locationProvider: location,
+        statusProvider: status,
+      );
       if (!mounted) return;
 
       // =========================
@@ -84,16 +93,14 @@ class _TouristSafeAppState extends State<TouristSafeApp> {
 
       await Permission.activityRecognition.request();
 
-      await PermissionService.requestAllPermissions();
-
-      await initializeService();
+      unawaited(initializeService());
 
       if (!mounted) return;
 
       // =========================
       // INITIAL STATUS CHECK
       // =========================
-      
+
       // Initialize all system statuses based on current settings
       SystemStatusService.initializeAllStatus(context);
 
@@ -135,34 +142,20 @@ class _TouristSafeAppState extends State<TouristSafeApp> {
         notificationProvider: notificationProvider,
       );
 
-      await locationProvider.startLiveTracking();
+      unawaited(locationProvider.startLiveTracking());
 
-      // First GPS fix can arrive after the stream starts — Overpass needs coordinates.
-      try {
-        if (locationProvider.latitude == null ||
-            locationProvider.longitude == null) {
-          await locationProvider.getCurrentLocation().timeout(
-            const Duration(seconds: 45),
-          );
-        }
-      } catch (_) {
-        // Still proceed; map / later ticks can populate location.
-      }
-
-      if (locationProvider.latitude != null &&
-          locationProvider.longitude != null) {
-        final elements = await OverpassService.fetchNearbyHazards(
-          lat: locationProvider.latitude!,
-          lng: locationProvider.longitude!,
-          statusProvider: systemStatusProvider,
-        );
-        final zones = ZoneEngineService.generateZones(elements);
-        zoneProvider.setZones(zones);
-        SystemStatusService.updateZoneStatus(
-          context,
-        );
-        await syncZonesForBackground(zones);
-      }
+      // if (locationProvider.latitude != null &&
+      //     locationProvider.longitude != null) {
+      //   final elements = await OverpassService.fetchNearbyHazards(
+      //     lat: locationProvider.latitude!,
+      //     lng: locationProvider.longitude!,
+      //     statusProvider: systemStatusProvider,
+      //   );
+      //   final zones = ZoneEngineService.generateZones(elements);
+      //   zoneProvider.setZones(zones);
+      //   SystemStatusService.updateZoneStatus(context);
+      //   await syncZonesForBackground(zones);
+      // }
 
       if (!mounted) return;
 
@@ -172,19 +165,11 @@ class _TouristSafeAppState extends State<TouristSafeApp> {
 
       await FlutterBackgroundService().startService();
 
-      SystemStatusService
-          .updateBackgroundService(
-        context,
-        active: true,
-      );
+      SystemStatusService.updateBackgroundService(context, active: true);
       await NativeFallBridge.initialize();
       AdvancedFallDetectionService.initialize(context);
 
-      SystemStatusService
-          .updateFallDetection(
-        context,
-        active: true,
-      );
+      SystemStatusService.updateFallDetection(context, active: true);
 
       // Start the native foreground service (survives app kill + reboot).
       // It also kicks off the Dart-side accelerometer listener as a fallback.
