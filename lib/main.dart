@@ -144,19 +144,6 @@ class _TouristSafeAppState extends State<TouristSafeApp> {
 
       unawaited(locationProvider.startLiveTracking());
 
-      // if (locationProvider.latitude != null &&
-      //     locationProvider.longitude != null) {
-      //   final elements = await OverpassService.fetchNearbyHazards(
-      //     lat: locationProvider.latitude!,
-      //     lng: locationProvider.longitude!,
-      //     statusProvider: systemStatusProvider,
-      //   );
-      //   final zones = ZoneEngineService.generateZones(elements);
-      //   zoneProvider.setZones(zones);
-      //   SystemStatusService.updateZoneStatus(context);
-      //   await syncZonesForBackground(zones);
-      // }
-
       if (!mounted) return;
 
       // =========================

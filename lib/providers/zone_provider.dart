@@ -29,6 +29,8 @@ class ZoneProvider extends ChangeNotifier {
   void setZones(List<ZoneModel> newZones) {
     zones = newZones;
 
+    zonesLoaded = true;
+
     notifyListeners();
   }
 
@@ -62,9 +64,7 @@ class ZoneProvider extends ChangeNotifier {
 
       final List decoded = jsonDecode(cachedData);
 
-      zones = decoded
-          .map((e) => ZoneModel.fromJson(e))
-          .toList();
+      zones = decoded.map((e) => ZoneModel.fromJson(e)).toList();
 
       zonesLoaded = true;
 
@@ -132,10 +132,7 @@ class ZoneProvider extends ChangeNotifier {
 
           name: 'TEST DANGER ZONE',
 
-          center: LatLng(
-            lat + 0.00002,
-            lng,
-          ),
+          center: LatLng(lat + 0.00002, lng),
 
           radius: 2.22,
 
@@ -146,8 +143,8 @@ class ZoneProvider extends ChangeNotifier {
           severity: 'danger',
         ),
       );
-
-      zones = generatedZones;
+      
+      setZones(generatedZones);
 
       zonesLoaded = true;
 
@@ -178,18 +175,24 @@ class ZoneProvider extends ChangeNotifier {
   }) async {
     if (_loadingTriggered) return;
 
+    _loadingTriggered = true;
+
+    // =========================
+    // LOAD CACHED ZONES FIRST
+    // =========================
+
+    await loadCachedZones();
+
+    // =========================
+    // REFRESH ONLY IF GPS READY
+    // =========================
+
     if (locationProvider.latitude == null ||
         locationProvider.longitude == null) {
       return;
     }
 
-    _loadingTriggered = true;
-
-    // LOAD CACHE FIRST
-    await loadCachedZones();
-
-    // REFRESH IN BACKGROUND
-    loadZones(
+    refreshZones(
       lat: locationProvider.latitude!,
       lng: locationProvider.longitude!,
       statusProvider: statusProvider,
@@ -205,10 +208,6 @@ class ZoneProvider extends ChangeNotifier {
     required double lng,
     required SystemStatusProvider statusProvider,
   }) async {
-    await loadZones(
-      lat: lat,
-      lng: lng,
-      statusProvider: statusProvider,
-    );
+    await loadZones(lat: lat, lng: lng, statusProvider: statusProvider);
   }
 }

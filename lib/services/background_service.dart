@@ -43,19 +43,7 @@ Future<void> initializeService() async {
 
 Future<void> syncZonesForBackground(List<ZoneModel> zones) async {
   final prefs = await SharedPreferences.getInstance();
-  final encodedZones = zones
-      .map(
-        (zone) => jsonEncode({
-          'id': zone.id,
-          'name': zone.name,
-          'severity': zone.severity,
-          'radius': zone.radius,
-          'lat': zone.center.latitude,
-          'lng': zone.center.longitude,
-        }),
-      )
-      .toList();
-
+  final encodedZones = zones.map((zone) => jsonEncode(zone.toJson())).toList();
   await prefs.setStringList(BackgroundServiceKeys.zones, encodedZones);
 
   final service = FlutterBackgroundService();
@@ -76,10 +64,7 @@ void onStart(ServiceInstance service) async {
 
   await prefs.setBool(BackgroundServiceKeys.bgRunning, true);
 
-  await prefs.setBool(
-    'fall_detection_running',
-    true,
-  );
+  await prefs.setBool('fall_detection_running', true);
 
   if (service is AndroidServiceInstance) {
     await service.setForegroundNotificationInfo(
@@ -97,7 +82,7 @@ void onStart(ServiceInstance service) async {
   await _loadZones();
 
   // Refresh zones every 12 mins
-  Timer.periodic(const Duration(minutes: 10), (timer) async {
+  Timer.periodic(const Duration(minutes: 4), (timer) async {
     await _refreshZonesFromOverpass();
   });
 
@@ -148,8 +133,20 @@ Future<void> _refreshZonesFromOverpass() async {
       statusProvider: null, // Background service runs independently : but why??
     );
     final zones = ZoneEngineService.generateZones(elements);
+
     if (zones.isEmpty) return;
+
+    // Save for background geofence
     await syncZonesForBackground(zones);
+
+    // Save for UI cache
+    final prefs = await SharedPreferences.getInstance();
+
+    final jsonData = jsonEncode(zones.map((zone) => zone.toJson()).toList());
+
+    await prefs.setString('cached_zones', jsonData);
+
+    // Reload memory cache
     await _loadZones();
   } catch (_) {}
 }
@@ -188,15 +185,9 @@ Future<void> _runGeofenceTick() async {
 
   final position = await Geolocator.getCurrentPosition();
 
-  await prefs.setDouble(
-    'last_speed',
-    position.speed,
-  );
+  await prefs.setDouble('last_speed', position.speed);
 
-  await prefs.setDouble(
-    'last_accuracy',
-    position.accuracy,
-  );
+  await prefs.setDouble('last_accuracy', position.accuracy);
 
   await prefs.setString(
     'last_location_update',
@@ -248,10 +239,7 @@ Future<void> _runGeofenceTick() async {
     activeZoneIds.toList(),
   );
 
-  await prefs.setInt(
-    'active_zone_count',
-    activeZoneIds.length,
-  );
+  await prefs.setInt('active_zone_count', activeZoneIds.length);
 }
 
 Future<void> _emitZoneNotification({
