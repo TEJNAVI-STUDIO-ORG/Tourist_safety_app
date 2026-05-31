@@ -53,9 +53,13 @@ class _MapScreenState extends State<MapScreen> {
       return "--";
     }
 
-    return "${time.hour.toString().padLeft(2, '0')}:"
+    final hour24 = time.hour;
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    final hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
+
+    return "${hour12.toString().padLeft(2, '0')}:"
         "${time.minute.toString().padLeft(2, '0')}:"
-        "${time.second.toString().padLeft(2, '0')}";
+        "${time.second.toString().padLeft(2, '0')} $period";
   }
 
   @override

@@ -13,10 +13,13 @@ class SystemStatusScreen extends StatelessWidget {
       return "Never";
     }
 
-    return
-        "${time.hour.toString().padLeft(2, '0')}:"
+    final hour24 = time.hour;
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    final hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
+
+    return "${hour12.toString().padLeft(2, '0')}:"
         "${time.minute.toString().padLeft(2, '0')}:"
-        "${time.second.toString().padLeft(2, '0')}";
+        "${time.second.toString().padLeft(2, '0')} $period";
   }
 
   Widget buildTile({
@@ -191,6 +194,7 @@ class SystemStatusScreen extends StatelessWidget {
 
                 value:
                     "${status.gpsStatus}\n\n"
+                    "Location: ${status.locationName}\n"
                     "Latitude: ${status.latitude?.toStringAsFixed(5) ?? '--'}\n"
                     "Longitude: ${status.longitude?.toStringAsFixed(5) ?? '--'}\n"
                     "Accuracy: ${status.accuracy?.toStringAsFixed(1) ?? '--'} m\n"
@@ -229,6 +233,7 @@ class SystemStatusScreen extends StatelessWidget {
                 title: "Zone Engine",
 
                 value:
+                    "Source: ${status.zoneSource}\n"
                     "Total Zones Loaded: ${status.totalZones}\n"
                     "Nearby Zones: ${status.nearbyZones}\n"
                     "Entered Zones: ${status.enteredZones}\n"
@@ -236,7 +241,7 @@ class SystemStatusScreen extends StatelessWidget {
 
                 icon: Icons.map,
 
-                active: status.totalZones > 0,
+                active: status.totalZones > 0 || status.geofenceActive,
               ),
 
               // =========================
@@ -249,7 +254,8 @@ class SystemStatusScreen extends StatelessWidget {
                 value:
                     "${status.fallDetectionStatus}\n\n"
                     "Sensor State: ${status.fallDetectionActive ? "MONITORING" : "DISABLED"}\n"
-                    "Last Check: ${formatTime(status.lastFallCheck)}",
+                    "Last Fall Event: ${status.lastFallEvent}\n"
+                    "Last Sensor Update: ${formatTime(status.lastFallCheck)}",
 
                 icon: Icons.warning_amber_rounded,
 
@@ -265,7 +271,10 @@ class SystemStatusScreen extends StatelessWidget {
 
                 value:
                     "${status.notificationStatus}\n\n"
-                    "Push Alerts: ${status.notificationActive ? "ACTIVE" : "DISABLED"}",
+                    "Push Alerts: ${status.notificationActive ? "ACTIVE" : "DISABLED"}\n"
+                    "SOS Status: ${status.sosReady ? "READY" : "NOT READY"}\n"
+                    "SOS Contacts: ${status.sosContactCount}\n"
+                    "SOS Template: ${status.sosMessageTemplateValid ? "OK" : "Missing / Invalid"}",
 
                 icon: Icons.notifications_active,
 
@@ -281,7 +290,11 @@ class SystemStatusScreen extends StatelessWidget {
 
                 value:
                     "${status.backgroundServiceStatus}\n\n"
-                    "Foreground Tracking: ${status.backgroundServiceActive ? "RUNNING" : "STOPPED"}",
+                    "Foreground Tracking: ${status.backgroundServiceActive ? "RUNNING" : "STOPPED"}\n"
+                    "Last Pulse: ${formatTime(status.lastPulse)}\n"
+                    "Last BG Scan: ${formatTime(status.lastBackgroundCheck)}\n"
+                    "Active Zones (bg): ${status.enteredZones}\n"
+                    "Next Scan: ${formatTime(status.nextZoneScan)}",
 
                 icon: Icons.sync,
 
@@ -303,23 +316,6 @@ class SystemStatusScreen extends StatelessWidget {
                 icon: Icons.cloud,
 
                 active: status.overpassActive,
-              ),
-
-              // =========================
-              // SOS
-              // =========================
-
-              buildTile(
-                title: "SOS System",
-
-                value:
-                    status.sosReady
-                        ? "Emergency System Ready"
-                        : "SOS Offline",
-
-                icon: Icons.sos,
-
-                active: status.sosReady,
               ),
 
               const SizedBox(height: 30),

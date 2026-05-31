@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,7 +11,11 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../core/global.dart';
 import '../models/notification_model.dart';
+import '../models/zone_model.dart';
+import '../providers/location_provider.dart';
 import '../providers/notification_provider.dart';
+import '../providers/system_status_provider.dart';
+import '../providers/zone_provider.dart';
 
 import 'system_status_service.dart';
 import 'notification_service.dart';
@@ -82,6 +87,12 @@ class AdvancedFallDetectionService {
         context,
         active: true,
       );
+
+      // persist last sensor update for status monitoring
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('last_fall_sensor_update', lastSensorUpdate!.toIso8601String());
+      } catch (_) {}
 
       if (magnitude < 2.0) {
         _freeFallTime = DateTime.now();
@@ -186,6 +197,8 @@ class AdvancedFallDetectionService {
       type: 'fall',
     );
 
+    await _updateFallLocationSummary();
+
     if (await Vibration.hasVibrator()) {
       Vibration.vibrate(duration: 1500);
     }
@@ -244,6 +257,75 @@ class AdvancedFallDetectionService {
         type: type,
       ),
     );
+  }
+
+  static Future<void> _updateFallLocationSummary() async {
+    final ctx = navigatorKey.currentContext;
+    if (ctx == null) return;
+
+    final locationProvider = Provider.of<LocationProvider>(
+      ctx,
+      listen: false,
+    );
+    final zoneProvider = Provider.of<ZoneProvider>(
+      ctx,
+      listen: false,
+    );
+
+    String locationText = 'at current location';
+
+    if (locationProvider.latitude != null && locationProvider.longitude != null) {
+      final userLocation = LatLng(
+        locationProvider.latitude!,
+        locationProvider.longitude!,
+      );
+
+      final distanceCalc = Distance();
+      ZoneModel? nearestZone;
+      double nearestDistance = double.infinity;
+
+      for (final zone in zoneProvider.zones) {
+        final distance = distanceCalc.as(
+          LengthUnit.Meter,
+          userLocation,
+          zone.center,
+        );
+
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestZone = zone;
+        }
+      }
+
+      if (nearestZone != null) {
+        if (nearestDistance <= nearestZone.radius) {
+          locationText = 'inside ${nearestZone.name}';
+        } else if (nearestDistance <= nearestZone.radius + 300) {
+          locationText = 'near ${nearestZone.name}';
+        } else {
+          locationText = 'near ${nearestZone.name} (${nearestDistance.toStringAsFixed(0)}m)';
+        }
+      }
+    }
+
+    final statusProvider = Provider.of<SystemStatusProvider>(
+      ctx,
+      listen: false,
+    );
+
+    statusProvider.updateLastFallEvent(
+      'Fall detected $locationText at ${_formatTime(DateTime.now())}',
+    );
+  }
+
+  static String _formatTime(DateTime time) {
+    final hour24 = time.hour;
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    final hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
+
+    return '${hour12.toString().padLeft(2, '0')}:'
+        '${time.minute.toString().padLeft(2, '0')}:'
+        '${time.second.toString().padLeft(2, '0')} $period';
   }
 
   static void _triggerEmergency() {

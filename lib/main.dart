@@ -13,9 +13,9 @@ import 'services/advanced_fall_detection_service.dart';
 import 'services/native_fall_bridge.dart';
 import 'services/geofence_service.dart';
 import 'services/background_service.dart';
-import 'services/overpass_service.dart';
-import 'services/zone_engine_service.dart';
 import 'services/system_status_service.dart';
+import 'services/service_health_monitor.dart';
+import 'services/battery_optimization_service.dart';
 
 import 'providers/notification_provider.dart';
 import 'providers/app_provider.dart';
@@ -93,7 +93,12 @@ class _TouristSafeAppState extends State<TouristSafeApp> {
 
       await Permission.activityRecognition.request();
 
-      unawaited(initializeService());
+      await initializeService();
+
+      if (mounted) {
+        ServiceHealthMonitor.start(context);
+        unawaited(BatteryOptimizationService.checkAndShowOptimizationDialog(context));
+      }
 
       if (!mounted) return;
 
@@ -102,7 +107,9 @@ class _TouristSafeAppState extends State<TouristSafeApp> {
       // =========================
 
       // Initialize all system statuses based on current settings
-      SystemStatusService.initializeAllStatus(context);
+      await SystemStatusService.initializeAllStatus(context);
+
+      if (!mounted) return;
 
       // =========================
       // LOCATION
@@ -134,6 +141,8 @@ class _TouristSafeAppState extends State<TouristSafeApp> {
 
       await locationProvider.requestPermissions();
 
+      if (!mounted) return;
+
       GeofenceService.startMonitoring(
         locationProvider: locationProvider,
 
@@ -152,11 +161,16 @@ class _TouristSafeAppState extends State<TouristSafeApp> {
 
       await FlutterBackgroundService().startService();
 
-      SystemStatusService.updateBackgroundService(context, active: true);
+      if (mounted) {
+        SystemStatusService.updateBackgroundService(context, active: true);
+      }
+      
       await NativeFallBridge.initialize();
-      AdvancedFallDetectionService.initialize(context);
-
-      SystemStatusService.updateFallDetection(context, active: true);
+      
+      if (mounted) {
+        AdvancedFallDetectionService.initialize(context);
+        SystemStatusService.updateFallDetection(context, active: true);
+      }
 
       // Start the native foreground service (survives app kill + reboot).
       // It also kicks off the Dart-side accelerometer listener as a fallback.

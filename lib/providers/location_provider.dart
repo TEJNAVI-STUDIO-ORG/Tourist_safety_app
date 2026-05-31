@@ -115,7 +115,7 @@ class LocationProvider extends ChangeNotifier {
 
             systemStatusProvider?.updateGps(
               active: true,
-              status: "GPS Tracking Active",
+              status: "Live GPS Active",
               lat: latitude,
               lng: longitude,
               gpsAccuracy: accuracy,
@@ -165,6 +165,13 @@ class LocationProvider extends ChangeNotifier {
     final zones = ZoneEngineService.generateZones(elements);
 
     zoneProvider.setZones(zones);
+
+    // Keep system status counts consistent with map/provider
+    statusProvider.updateZoneCount(
+      total: zones.length,
+      nearby: statusProvider.nearbyZones,
+      source: 'Live Memory',
+    );
 
     await syncZonesForBackground(zones);
 

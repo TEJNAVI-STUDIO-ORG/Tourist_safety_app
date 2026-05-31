@@ -41,6 +41,31 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+    // android.applicationVariants.all {
+    // val variant = this
+
+    // variant.outputs.all {
+    //     val date = SimpleDateFormat("yyyyMMdd").format(Date())
+
+    //     val version = variant.versionName ?: "0.0.0"
+
+    //     // Extract stage from version string
+    //     val stage = when {
+    //         version.contains("alpha", ignoreCase = true) -> "alpha"
+    //         version.contains("beta", ignoreCase = true) -> "beta"
+    //         version.contains("rc", ignoreCase = true) -> "rc"
+    //         else -> "stable"
+    //     }
+
+    //     val cleanVersion = version
+    //         .replace("-alpha", "")
+    //         .replace("-beta", "")
+    //         .replace("-rc", "")
+
+    //     (this as BaseVariantOutputImpl).outputFileName =
+    //         "TouriSafe_v${cleanVersion}_${stage}_${variant.buildType.name}_${date}.apk"
+    //     }
+    // }
 }
 
 flutter {

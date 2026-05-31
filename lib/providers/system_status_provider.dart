@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SystemStatusProvider extends ChangeNotifier {
   // =========================
@@ -6,17 +8,11 @@ class SystemStatusProvider extends ChangeNotifier {
   // =========================
 
   bool gpsActive = false;
-
   String gpsStatus = "Initializing...";
-
   DateTime? lastGpsUpdate;
-
   double? latitude;
-
   double? longitude;
-
   double? accuracy;
-
   double? gpsspeed;
 
   // =========================
@@ -24,13 +20,11 @@ class SystemStatusProvider extends ChangeNotifier {
   // =========================
 
   bool overpassActive = false;
-
   String overpassStatus = "Waiting...";
-
   String lastApiCall = "None";
-
+  String lastSuccessfulEndpoint = "None";
   DateTime? lastOverpassRefresh;
-
+  String overpassSuggestion = "No hazard suggestions yet";
   int retryCount = 0;
 
   // =========================
@@ -38,13 +32,9 @@ class SystemStatusProvider extends ChangeNotifier {
   // =========================
 
   bool geofenceActive = false;
-
   String geofenceStatus = "Inactive";
-
   String lastZoneEvent = "None";
-
   DateTime? lastGeofenceCheck;
-
   bool insideDangerZone = false;
 
   // =========================
@@ -52,38 +42,39 @@ class SystemStatusProvider extends ChangeNotifier {
   // =========================
 
   int totalZones = 0;
-
   int nearbyZones = 0;
-
   int enteredZones = 0;
-
   DateTime? nextZoneScan;
+  String zoneSource = "Unknown";
+  String locationName = "Unknown Location";
 
   // =========================
   // FALL DETECTION
   // =========================
 
   bool fallDetectionActive = false;
-
   String fallDetectionStatus = "Inactive";
-
   DateTime? lastFallCheck;
+  String lastFallEvent = "No recent fall events";
 
   // =========================
   // NOTIFICATIONS
   // =========================
 
   bool notificationActive = false;
-
   String notificationStatus = "Inactive";
+
+  bool sosMessageTemplateValid = false;
+  int sosContactCount = 0;
 
   // =========================
   // BACKGROUND SERVICE
   // =========================
 
   bool backgroundServiceActive = false;
-
   String backgroundServiceStatus = "Stopped";
+  DateTime? lastPulse;
+  DateTime? lastBackgroundCheck;
 
   // =========================
   // SOS
@@ -91,7 +82,98 @@ class SystemStatusProvider extends ChangeNotifier {
 
   bool sosReady = false;
 
+  // =========================
+  // CACHE KEYS
+  // =========================
+  static const String keyLastLat = 'status_last_lat';
+  static const String keyLastLng = 'status_last_lng';
+  static const String keyLastApiStatus = 'status_last_api_msg';
+  static const String keyLastApiTime = 'status_last_api_time';
+  static const String keyLastApiSuggestion = 'status_last_api_suggestion';
+  static const String keyLocationName = 'status_location_name';
+  static const String keyLastFallEvent = 'status_last_fall_event';
+  static const String keyLastPulse = 'bg_last_heartbeat';
+  static const String keyLastBgCheck = 'bg_last_check';
 
+  // =========================
+  // INITIALIZATION
+  // =========================
+  
+  Future<void> loadCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    final savedLat = prefs.getDouble(keyLastLat);
+    final savedLng = prefs.getDouble(keyLastLng);
+    if (savedLat != null && savedLng != null) {
+      latitude = savedLat;
+      longitude = savedLng;
+      gpsStatus = "Using Cached Location";
+    }
+
+    final savedStatus = prefs.getString(keyLastApiStatus);
+    if (savedStatus != null) {
+      overpassStatus = savedStatus;
+    }
+    
+    final apiTimeStr = prefs.getString(keyLastApiTime);
+    if (apiTimeStr != null) {
+      lastOverpassRefresh = DateTime.parse(apiTimeStr);
+      overpassActive = true;
+    }
+
+    final pulseStr = prefs.getString(keyLastPulse);
+    if (pulseStr != null) {
+      lastPulse = DateTime.tryParse(pulseStr);
+    }
+
+    final bgCheckStr = prefs.getString(keyLastBgCheck);
+    if (bgCheckStr != null) {
+      lastBackgroundCheck = DateTime.tryParse(bgCheckStr);
+    }
+
+    final savedFallEvent = prefs.getString(keyLastFallEvent);
+    if (savedFallEvent != null) {
+      lastFallEvent = savedFallEvent;
+    }
+
+    final savedSuggestion = prefs.getString(keyLastApiSuggestion);
+    if (savedSuggestion != null) {
+      overpassSuggestion = savedSuggestion;
+    }
+
+    final savedLocationName = prefs.getString(keyLocationName);
+    if (savedLocationName != null) {
+      locationName = savedLocationName;
+    }
+
+    // Load background-service counts if present
+    final bgTotalZones = prefs.getInt('bg_total_zones');
+    if (bgTotalZones != null) {
+      totalZones = bgTotalZones;
+    }
+
+    final activeNearby = prefs.getInt('active_zone_count');
+
+    if (totalZones > 0 && zoneSource == "Unknown") {
+      zoneSource = 'Cache Only';
+    }
+    if (activeNearby != null) {
+      nearbyZones = activeNearby;
+    }
+    // Load next scheduled background scan
+    final nextScanStr = prefs.getString('bg_next_scan');
+    if (nextScanStr != null) {
+      nextZoneScan = DateTime.tryParse(nextScanStr);
+    }
+
+    // Load last fall sensor timestamp saved by fall detection service
+    final lastFallSensor = prefs.getString('last_fall_sensor_update');
+    if (lastFallSensor != null) {
+      lastFallCheck = DateTime.tryParse(lastFallSensor);
+    }
+    
+    notifyListeners();
+  }
 
   // =========================
   // UPDATE METHODS
@@ -104,30 +186,38 @@ class SystemStatusProvider extends ChangeNotifier {
     double? lng,
     double? gpsAccuracy,
     double? speed,
-  }) {
+  }) async {
     gpsActive = active;
-
     gpsStatus = status;
-
     latitude = lat;
-
     longitude = lng;
-
     accuracy = gpsAccuracy;
-
     gpsspeed = speed;
-
     lastGpsUpdate = DateTime.now();
+
+    if (lat != null && lng != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(keyLastLat, lat);
+      await prefs.setDouble(keyLastLng, lng);
+    }
 
     notifyListeners();
   }
 
-  void updateOverpass({required bool active, required String status}) {
+  void updateOverpass({required bool active, required String status, String? suggestion}) async {
     overpassActive = active;
-
     overpassStatus = status;
-
+    if (suggestion != null) {
+      overpassSuggestion = suggestion;
+    }
     lastOverpassRefresh = DateTime.now();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(keyLastApiStatus, status);
+    await prefs.setString(keyLastApiTime, lastOverpassRefresh!.toIso8601String());
+    if (suggestion != null) {
+      await prefs.setString(keyLastApiSuggestion, suggestion);
+    }
 
     notifyListeners();
   }
@@ -138,77 +228,92 @@ class SystemStatusProvider extends ChangeNotifier {
     bool? insideZone,
   }) {
     geofenceActive = active;
-
     geofenceStatus = status;
-
     insideDangerZone = insideZone ?? false;
-
     lastGeofenceCheck = DateTime.now();
-
     notifyListeners();
   }
 
   void updateFallDetection({required bool active, required String status}) {
     fallDetectionActive = active;
-
     fallDetectionStatus = status;
-
     lastFallCheck = DateTime.now();
+    notifyListeners();
+  }
 
+  void updateLocationName(String name) async {
+    locationName = name;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(keyLocationName, name);
     notifyListeners();
   }
 
   void updateNotifications({required bool active, required String status}) {
     notificationActive = active;
-
     notificationStatus = status;
+    notifyListeners();
+  }
+
+  void updateSosDetails({
+    required bool ready,
+    required int contactCount,
+    required bool messageValid,
+  }) {
+    sosReady = ready;
+    sosContactCount = contactCount;
+    sosMessageTemplateValid = messageValid;
+    notifyListeners();
+  }
+
+  void updateLastFallEvent(String event) async {
+    lastFallEvent = event;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(keyLastFallEvent, event);
 
     notifyListeners();
   }
 
   void updateBackgroundService({required bool active, required String status}) {
     backgroundServiceActive = active;
-
     backgroundServiceStatus = status;
-
     notifyListeners();
   }
 
-  void updateZoneCount({required int total, required int nearby}) {
+  void updateZoneCount({required int total, required int nearby, String source = 'Live Memory'}) {
     totalZones = total;
-
     nearbyZones = nearby;
-
+    zoneSource = source;
     notifyListeners();
   }
 
   void updateLastZoneEvent(String event) {
     lastZoneEvent = event;
-
     notifyListeners();
   }
 
   void incrementEnteredZones() {
     enteredZones++;
+    notifyListeners();
+  }
 
+  void setEnteredZones(int count) {
+    enteredZones = count;
     notifyListeners();
   }
 
   void incrementRetry() {
     retryCount++;
-
     notifyListeners();
   }
 
   void resetRetry() {
     retryCount = 0;
-
     notifyListeners();
   }
 
   void updateSOS(bool ready) {
     sosReady = ready;
-
     notifyListeners();
   }
 
@@ -253,7 +358,7 @@ class SystemStatusProvider extends ChangeNotifier {
   }
 
   void updateLastLocation(DateTime time) {
-     lastGpsUpdate = time;
+    lastGpsUpdate = time;
     notifyListeners();
   }
 

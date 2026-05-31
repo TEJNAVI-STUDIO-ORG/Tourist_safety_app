@@ -5,8 +5,6 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
     <uses-permission android:name="android.permission.SEND_SMS"/>
-    <uses-permission android:name="android.permission.READ_SMS"/>
-    <uses-permission android:name="android.permission.RECEIVE_SMS"/>
 
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
@@ -46,7 +44,8 @@
             android:name="id.flutter.flutter_background_service.BackgroundService"
             android:foregroundServiceType="location"
             android:exported="false"
-            tools:replace="android:exported"/>
+            android:stopWithTask="false"
+            tools:replace="android:exported,android:stopWithTask"/>
 
         <receiver
             android:name="id.flutter.flutter_background_service.BootReceiver"
@@ -74,23 +73,11 @@
             </intent-filter>
         </receiver>
 
-        <!-- Restarts BackgroundService after device reboot -->
+        <!-- Global Safety Service Restarter (Boot/Swipe/Update) -->
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"
             android:exported="true">
-
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
-            </intent-filter>
-        </receiver>
-
-        <!-- Restarts FallDetectionService after device reboot -->
-        <receiver
-            android:name=".FallBootReceiver"
-            android:enabled="true"
-            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>

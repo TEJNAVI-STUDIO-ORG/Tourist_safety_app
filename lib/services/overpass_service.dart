@@ -83,15 +83,23 @@ out center;
                 .timeout(const Duration(seconds: 55));
 
             if (response.statusCode == 200) {
-              // Update status to show successful connection
-              statusProvider?.updateOverpass(
-                active: true, 
-                status: "Connected successfully"
-              );
-              statusProvider?.resetRetry();
-              
+              // Update status to show successful connection with specific endpoint
+              final endpointName = base.split('/')[2]; // Extracts domain
               final data = jsonDecode(response.body) as Map<String, dynamic>;
               final elements = data['elements'];
+              final String suggestion = _buildOverpassSuggestion(elements);
+              final String? locationName = _extractNearbyPlaceName(elements);
+
+              statusProvider?.updateOverpass(
+                active: true,
+                status: "Connected Successfully to $endpointName",
+                suggestion: suggestion,
+              );
+              if (locationName != null) {
+                statusProvider?.updateLocationName(locationName);
+              }
+              statusProvider?.resetRetry();
+              
               if (elements is List<dynamic>) {
                 return elements;
               }
@@ -131,5 +139,61 @@ out center;
     } catch (e) {
       return [];
     }
+  }
+
+  static String _buildOverpassSuggestion(dynamic elements) {
+    if (elements is! List || elements.isEmpty) {
+      return 'No nearby hazards detected.';
+    }
+
+    final first = elements.firstWhere(
+      (element) => element is Map<String, dynamic>,
+      orElse: () => null,
+    );
+
+    if (first is! Map<String, dynamic>) {
+      return 'No nearby hazards detected.';
+    }
+
+    final tags = first['tags'] as Map<String, dynamic>?;
+    final hazardName = tags?['name'] ?? tags?['amenity'] ?? tags?['natural'] ?? tags?['landuse'] ?? first['type']?.toString() ?? 'hazard';
+
+    if (tags != null && tags['amenity'] != null) {
+      return 'Nearby ${tags['amenity']} detected. Stay alert.';
+    }
+
+    return 'Nearby $hazardName detected. Be cautious.';
+  }
+
+  static String? _extractNearbyPlaceName(dynamic elements) {
+    if (elements is! List<dynamic>) {
+      return null;
+    }
+
+    final placeElement = elements.firstWhere(
+      (element) {
+        if (element is! Map<String, dynamic>) return false;
+        final tags = element['tags'] as Map<String, dynamic>?;
+        if (tags == null) return false;
+        final placeType = tags['place']?.toString().toLowerCase();
+        return placeType == 'town' ||
+            placeType == 'city' ||
+            placeType == 'village' ||
+            placeType == 'hamlet';
+      },
+      orElse: () => null,
+    );
+
+    if (placeElement is! Map<String, dynamic>) {
+      return null;
+    }
+
+    final tags = placeElement['tags'] as Map<String, dynamic>?;
+    final name = tags?['name']?.toString();
+    if (name != null && name.isNotEmpty) {
+      return name;
+    }
+
+    return null;
   }
 }

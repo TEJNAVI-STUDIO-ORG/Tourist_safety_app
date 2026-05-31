@@ -13,9 +13,12 @@ class SystemStatusService {
   // INITIAL STATUS CHECK
   // =========================
 
-  static void initializeAllStatus(BuildContext context) {
+  static Future<void> initializeAllStatus(BuildContext context) async {
     final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     final systemProvider = Provider.of<SystemStatusProvider>(context, listen: false);
+    
+    // Load cached location and Overpass status first
+    await systemProvider.loadCache();
     
     // Initialize notification services based on settings
     systemProvider.updateNotifications(
@@ -174,7 +177,7 @@ class SystemStatusService {
 
     systemProvider.updateNextZoneScan(
       DateTime.now().add(
-        const Duration(seconds: 15),
+        const Duration(minutes: 5),
       ),
     );
   }

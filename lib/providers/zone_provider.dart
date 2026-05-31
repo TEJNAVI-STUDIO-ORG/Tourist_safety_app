@@ -52,7 +52,7 @@ class ZoneProvider extends ChangeNotifier {
   // LOAD CACHED ZONES
   // =========================
 
-  Future<void> loadCachedZones() async {
+  Future<void> loadCachedZones({SystemStatusProvider? statusProvider}) async {
     try {
       final cachedData = await ZoneCacheService.loadZones();
 
@@ -67,6 +67,15 @@ class ZoneProvider extends ChangeNotifier {
       zones = decoded.map((e) => ZoneModel.fromJson(e)).toList();
 
       zonesLoaded = true;
+
+      // Update global status with cached counts when available
+      if (statusProvider != null) {
+        statusProvider.updateZoneCount(
+          total: zones.length,
+          nearby: statusProvider.nearbyZones,
+          source: 'Cache Only',
+        );
+      }
 
       debugPrint("Loaded Cached Zones: ${zones.length}");
 
@@ -148,6 +157,13 @@ class ZoneProvider extends ChangeNotifier {
 
       zonesLoaded = true;
 
+      // Keep system status in sync with freshly loaded zones
+      statusProvider.updateZoneCount(
+        total: generatedZones.length,
+        nearby: statusProvider.nearbyZones,
+        source: 'Live Memory',
+      );
+
       // SAVE CACHE
       await saveZonesToCache(generatedZones);
 
@@ -181,7 +197,7 @@ class ZoneProvider extends ChangeNotifier {
     // LOAD CACHED ZONES FIRST
     // =========================
 
-    await loadCachedZones();
+    await loadCachedZones(statusProvider: statusProvider);
 
     // =========================
     // REFRESH ONLY IF GPS READY
@@ -189,6 +205,26 @@ class ZoneProvider extends ChangeNotifier {
 
     if (locationProvider.latitude == null ||
         locationProvider.longitude == null) {
+      
+      // Listen for first location
+      debugPrint("Waiting for GPS lock to fetch zones...");
+      
+      late Function() listener;
+      listener = () {
+        if (locationProvider.latitude != null &&
+            locationProvider.longitude != null) {
+          
+          locationProvider.removeListener(listener);
+          
+          refreshZones(
+            lat: locationProvider.latitude!,
+            lng: locationProvider.longitude!,
+            statusProvider: statusProvider,
+          );
+        }
+      };
+      
+      locationProvider.addListener(listener);
       return;
     }
 

@@ -16,6 +16,7 @@ class BackgroundServiceKeys {
   static const String activeZones = 'bg_active_zone_ids';
   static const String notifications = 'notifications';
   static const String bgRunning = 'bg_running';
+  static const String lastHeartbeat = 'bg_last_heartbeat';
 
   static const String nextScan = 'bg_next_scan';
 
@@ -28,7 +29,7 @@ Future<void> initializeService() async {
   await service.configure(
     androidConfiguration: AndroidConfiguration(
       onStart: onStart,
-      autoStart: false,
+      autoStart: true,
       autoStartOnBoot: true,
       isForegroundMode: true,
       notificationChannelId: 'guardian_tracking',
@@ -63,16 +64,17 @@ void onStart(ServiceInstance service) async {
   final prefs = await SharedPreferences.getInstance();
 
   await prefs.setBool(BackgroundServiceKeys.bgRunning, true);
+  await prefs.setString(BackgroundServiceKeys.lastHeartbeat, DateTime.now().toIso8601String());
 
   await prefs.setBool('fall_detection_running', true);
 
   if (service is AndroidServiceInstance) {
+    service.setAsForegroundService();
+    
     await service.setForegroundNotificationInfo(
       title: "Guardian Pulse",
       content: "Safety tracking active",
     );
-
-    await service.setAsForegroundService();
   }
 
   service.on('refresh_zones').listen((_) async {
@@ -81,8 +83,52 @@ void onStart(ServiceInstance service) async {
 
   await _loadZones();
 
-  // Refresh zones every 12 mins
-  Timer.periodic(const Duration(minutes: 4), (timer) async {
+  // Heartbeat every 1 minute
+  Timer.periodic(const Duration(minutes: 1), (timer) async {
+    await prefs.setString(BackgroundServiceKeys.lastHeartbeat, DateTime.now().toIso8601String());
+  });
+
+  // Update foreground notification summary every 5 minutes
+  Timer.periodic(const Duration(minutes: 5), (timer) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final lastLocation = prefs.getString('last_location_update');
+      bool gpsActive = false;
+      if (lastLocation != null) {
+        final parsed = DateTime.tryParse(lastLocation);
+        if (parsed != null) {
+          gpsActive = DateTime.now().difference(parsed).inMinutes < 5;
+        }
+      }
+
+      final totalZones = prefs.getInt(BackgroundServiceKeys.totalZones) ?? 0;
+      final activeCount = prefs.getInt('active_zone_count') ?? 0;
+      final fallOn = prefs.getBool('fall_detection_running') ?? false;
+
+      final safe = activeCount == 0 ? 'yes' : 'no';
+      final fallStatus = fallOn ? 'on' : 'off';
+
+        final content =
+          'gps: ${gpsActive ? 'active' : 'inactive'} | zones: $totalZones | inside: $activeCount | fall: $fallStatus | safe: $safe';
+
+      if (service is AndroidServiceInstance) {
+        await service.setForegroundNotificationInfo(
+          title: "Guardian Pulse",
+          content: content,
+        );
+      }
+    } catch (_) {}
+  });
+
+  // Refresh zones every 5 mins
+  Timer.periodic(const Duration(minutes: 5), (timer) async {
+    await prefs.setString('bg_last_check', DateTime.now().toIso8601String());
+    final nextScan = DateTime.now().add(const Duration(minutes: 5));
+    await prefs.setString(
+      BackgroundServiceKeys.nextScan,
+      nextScan.toIso8601String(),
+    );
     await _refreshZonesFromOverpass();
   });
 
@@ -96,18 +142,9 @@ void onStart(ServiceInstance service) async {
           title: "Guardian Pulse",
           content: "Safety tracking active",
         );
-        print("BACKGROUND TICK");
-
         service.setAsForegroundService();
       }
     }
-
-    final nextScan = DateTime.now().add(const Duration(seconds: 15));
-
-    await prefs.setString(
-      BackgroundServiceKeys.nextScan,
-      nextScan.toIso8601String(),
-    );
 
     await _runGeofenceTick();
   });
@@ -200,9 +237,17 @@ Future<void> _runGeofenceTick() async {
     final zoneId = zone['id'].toString();
     final zoneName = zone['name'].toString();
     final severity = zone['severity'].toString();
-    final radius = (zone['radius'] as num).toDouble();
-    final lat = (zone['lat'] as num).toDouble();
-    final lng = (zone['lng'] as num).toDouble();
+    final radiusRaw = zone['radius'] ?? zone['raduis'];
+    final latRaw = zone['lat'] ?? zone['latitude'];
+    final lngRaw = zone['lng'] ?? zone['longitude'];
+
+    if (radiusRaw == null || latRaw == null || lngRaw == null) {
+      continue;
+    }
+
+    final radius = (radiusRaw as num).toDouble();
+    final lat = (latRaw as num).toDouble();
+    final lng = (lngRaw as num).toDouble();
 
     final distance = Geolocator.distanceBetween(
       position.latitude,

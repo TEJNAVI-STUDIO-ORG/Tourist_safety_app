@@ -51,6 +51,17 @@ class SettingsProvider extends ChangeNotifier {
     }
   }
 
+  void _updateNotificationStatus() {
+    if (systemStatusProvider != null) {
+      final bool pushEnabled = pushNotifications || smsAlerts;
+      final String pushState = pushEnabled ? 'ACTIVE' : 'DISABLED';
+      systemStatusProvider!.updateNotifications(
+        active: pushEnabled,
+        status: 'Push Alerts: $pushState | SOS: ${systemStatusProvider!.sosReady ? 'READY' : 'NOT READY'}',
+      );
+    }
+  }
+
   // 🌙 DARK MODE
   void toggleDarkMode() {
 
@@ -92,6 +103,8 @@ class SettingsProvider extends ChangeNotifier {
 
     saveSettings();
 
+    _updateNotificationStatus();
+
     notifyListeners();
   }
 
@@ -123,6 +136,8 @@ class SettingsProvider extends ChangeNotifier {
 
     saveSettings();
 
+    _updateNotificationStatus();
+
     notifyListeners();
   }
 
@@ -132,6 +147,8 @@ class SettingsProvider extends ChangeNotifier {
     sosMessageTemplate = message;
 
     saveSettings();
+
+    _updateSosStatus();
 
     notifyListeners();
   }

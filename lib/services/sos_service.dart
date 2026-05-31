@@ -11,23 +11,34 @@ class SosService {
   }) {
     final bool hasContacts = settingsProvider.contacts.isNotEmpty;
     final bool hasValidMessage = _isValidSosMessage(settingsProvider.sosMessageTemplate);
-    
-    if (hasContacts && hasValidMessage) {
-      statusProvider.updateSOS(true);
-      statusProvider.updateNotifications(
-        active: true, 
-        status: "SOS Ready - ${settingsProvider.contacts.length} contacts"
-      );
-    } else {
-      statusProvider.updateSOS(false);
-      String reason = "";
-      if (!hasContacts) reason += "No contacts ";
-      if (!hasValidMessage) reason += "Invalid message ";
-      statusProvider.updateNotifications(
-        active: false, 
-        status: "SOS Not Ready - $reason"
-      );
+    final bool isReady = hasContacts && hasValidMessage;
+    final bool pushEnabled = settingsProvider.pushNotifications || settingsProvider.smsAlerts;
+
+    statusProvider.updateSOS(isReady);
+    statusProvider.updateSosDetails(
+      ready: isReady,
+      contactCount: settingsProvider.contacts.length,
+      messageValid: hasValidMessage,
+    );
+
+    String sosState = isReady ? 'READY' : 'NOT READY';
+    String pushState = pushEnabled ? 'ACTIVE' : 'DISABLED';
+    String statusMessage = 'Push Alerts: $pushState | SOS: $sosState';
+
+    if (!isReady) {
+      String reason = '';
+      if (!hasContacts) reason += 'No contacts';
+      if (!hasValidMessage) {
+        if (reason.isNotEmpty) reason += ', ';
+        reason += 'Invalid or missing message template';
+      }
+      statusMessage += ' ($reason)';
     }
+
+    statusProvider.updateNotifications(
+      active: pushEnabled,
+      status: statusMessage,
+    );
   }
   
   /// Validate SOS message template
