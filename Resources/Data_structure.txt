@@ -5,6 +5,8 @@ Root Directory: E:\Adi_32GR_files\MyCodingHelper\Projects\Multi_lang\Tourist_saf
 Excluded Items: node_modules, __pycache__, .git, .vscode, .venv, venv, .idea, py-gpt, venv3.10, bot_env, .gitignore, LICENSE, gradle-8.13, Data_structure.txt
 ------------------------------------------------------------
 
+
+
 Tourist_safety_app/
 ├── .dart_tool/
 │   ├── dartpad/
