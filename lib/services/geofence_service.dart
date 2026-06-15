@@ -1,8 +1,7 @@
 import 'dart:async';
-
-import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../models/zone_model.dart';
 import '../models/notification_model.dart';
@@ -24,8 +23,12 @@ class GeofenceService {
     required LocationProvider locationProvider,
     required ZoneProvider zoneProvider,
     required NotificationProvider notificationProvider,
-  }) {
+  }) async {
     _timer?.cancel();
+
+    // Initialize activeZones from prefs to avoid duplicate alerts on app restart
+    final prefs = await SharedPreferences.getInstance();
+    activeZones = prefs.getStringList('bg_active_zone_ids') ?? [];
 
     _timer = Timer.periodic(
       const Duration(seconds: 3),
@@ -98,27 +101,26 @@ class GeofenceService {
         final body = 'You entered a ${zone.severity} zone.';
 
         await notificationProvider.addNotification(
-          AppNotification(
-            id: id,
-            title: title,
-            body: body,
-            type: 'zone_enter',
-            time: DateTime.now(),
-            severity: zone.severity,
-            isRead: false,
-          ),
+          title: title,
+          body: body,
+          type: 'zone_enter',
+          severity: zone.severity,
         );
 
         await NotificationService.showNotification(
           title: title,
           body: body,
           notificationId: int.parse(id) % 2147483647,
+          actions: zone.severity == 'danger' ? [
+            const AndroidNotificationAction('safe_action', "I'M SAFE", showsUserInterface: false),
+            const AndroidNotificationAction('leave_action', "LEAVE ZONE", showsUserInterface: false),
+          ] : null,
         );
 
         lastEvent = title;
 
         if (zone.severity == 'danger') {
-          debugPrint('DANGER ZONE ALERT');
+          // Handled by BackgroundService for unified breakthrough experience
         }
       } else if (!inside && alreadyInside) {
         activeZones.remove(zone.id);
@@ -128,21 +130,16 @@ class GeofenceService {
         final body = 'You left the zone safely.';
 
         await notificationProvider.addNotification(
-          AppNotification(
-            id: id,
-            title: title,
-            body: body,
-            type: 'zone_exit',
-            time: DateTime.now(),
-            severity: zone.severity,
-            isRead: false,
-          ),
+          title: title,
+          body: body,
+          type: 'zone_exit',
+          severity: zone.severity,
         );
 
         await NotificationService.showNotification(
           title: title,
           body: body,
-          notificationId: int.parse(id) % 2147483647,
+          notificationId: (int.parse(id) % 2147483647).abs(),
         );
 
         lastEvent = title;

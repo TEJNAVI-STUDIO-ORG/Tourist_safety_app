@@ -1,4 +1,3 @@
-import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -6,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/location_provider.dart';
 import '../providers/system_status_provider.dart';
+import '../providers/settings_provider.dart';
 
 import '../screens/system_status_screen.dart';
 import '../screens/emergency_screen.dart';
@@ -19,7 +19,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final Battery battery = Battery();
+  final MapController mapController = MapController();
 
   int batteryLevel = 0;
 
@@ -31,13 +31,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> loadBattery() async {
-    final level = await battery.batteryLevel;
-
     if (!mounted) return;
 
-    setState(() {
-      batteryLevel = level;
-    });
+    setState(() {});
   }
 
   @override
@@ -51,7 +47,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("TouristSafe"),
+        title: const Text("TouriSafe"),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications),
@@ -73,6 +69,136 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             child: Column(
               children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Live Map",
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text(
+                        "Your current location and nearby safety zones",
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // =========================
+                // LIVE MAP
+                // =========================
+                Container(
+                  height: 250,
+
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+
+                  clipBehavior: Clip.hardEdge,
+
+                  child: Stack(
+                    children: [
+                      FlutterMap(
+                        mapController: mapController,
+                        options: MapOptions(
+                          initialCenter: currentLocation,
+                          initialZoom: 15,
+                        ),
+
+                        children: [
+                          TileLayer(
+                            urlTemplate:
+                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+
+                            userAgentPackageName:
+                                'com.example.tourist_safety_app',
+                          ),
+
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                point: currentLocation,
+
+                                width: 40,
+                                height: 40,
+
+                                child: const Icon(
+                                  Icons.location_pin,
+                                  color: Colors.red,
+                                  size: 40,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      // RE-CENTER BUTTON
+                      Positioned(
+                        bottom: 12,
+                        right: 12,
+                        child: FloatingActionButton.small(
+                          heroTag: "btn_dashboard_recenter",
+                          shape: const CircleBorder(),
+                          onPressed: () {
+                            mapController.move(currentLocation, 15);
+                          },
+                          child: const Icon(Icons.my_location),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // =========================
+                // PRIVATE MODE
+                // =========================
+                Consumer<SettingsProvider>(
+                  builder: (context, settings, _) {
+                    return SwitchListTile(
+                      title: const Text("Private Mode"),
+                      subtitle: const Text("Disable live tracking"),
+                      value: settings.privateMode,
+                      onChanged: (value) {
+                        settings.togglePrivateMode();
+                      },
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "System Monitor",
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text(
+                        "Real-time status of your safety subsystems",
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
                 // =========================
                 // MAIN STATUS
                 // =========================
@@ -162,167 +288,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 16),
-
-                // =========================
-                // PRIVATE MODE
-                // =========================
-                SwitchListTile(
-                  title: const Text("Private Mode"),
-
-                  subtitle: const Text("Disable live tracking"),
-
-                  value: !locationProvider.trackingEnabled,
-
-                  onChanged: (value) async {
-                    if (value) {
-                      await locationProvider.stopTracking();
-                    } else {
-                      await locationProvider.resumeTracking();
-                    }
-                  },
-                ),
-
-                const SizedBox(height: 10),
-
-                // =========================
-                // BATTERY
-                // =========================
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-
-                      children: [
-                        const Text("Battery"),
-
-                        const SizedBox(height: 10),
-
-                        LinearProgressIndicator(
-                          value: batteryLevel / 100,
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        Text("$batteryLevel%"),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // =========================
-                // LIVE MAP
-                // =========================
-                Container(
-                  height: 220,
-
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-
-                  clipBehavior: Clip.hardEdge,
-
-                  child: FlutterMap(
-                    options: MapOptions(
-                      initialCenter: currentLocation,
-                      initialZoom: 15,
-                    ),
-
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-
-                        userAgentPackageName:
-                            'com.example.tourist_safety_app',
-                      ),
-
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            point: currentLocation,
-
-                            width: 40,
-                            height: 40,
-
-                            child: const Icon(
-                              Icons.location_pin,
-                              color: Colors.red,
-                              size: 40,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // =========================
-                // ZONE INTELLIGENCE
-                // =========================
-                Consumer<SystemStatusProvider>(
-                  builder: (context, status, _) {
-                    return SizedBox(
-                      width: double.infinity,
-
-                      child: Card(
-                        elevation: 2,
-
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-
-                            children: [
-                              const Text(
-                                "Zone Intelligence",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-
-                              const SizedBox(height: 14),
-
-                              _zoneRow(
-                                "Total Zones",
-                                status.totalZones.toString(),
-                              ),
-
-                              _zoneRow(
-                                "Nearby Zones",
-                                status.nearbyZones.toString(),
-                              ),
-
-                              _zoneRow(
-                                "Danger Status",
-                                status.insideDangerZone
-                                    ? "HIGH RISK"
-                                    : "SAFE",
-                                valueColor: status.insideDangerZone
-                                    ? Colors.red
-                                    : Colors.green,
-                              ),
-
-                              _zoneRow(
-                                "Next Scan",
-                                status.nextZoneScan?.toString() ?? "--",
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
                 const SizedBox(height: 20),
 
                 // =========================
@@ -348,34 +313,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                     child: const Text(
                       "SOS",
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // =========================
-                // LOCATION DATA
-                // =========================
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.location_on),
-
-                    title: const Text("Current Location"),
-
-                    subtitle: Text(
-                      "Lat: "
-                      "${(locationProvider.latitude ?? 0).toStringAsFixed(5)}\n\n"
-                      "Lng: "
-                      "${(locationProvider.longitude ?? 0).toStringAsFixed(5)}\n\n"
-                      "Speed: "
-                      "${locationProvider.speed.toStringAsFixed(1)} m/s\n\n"
-                      "Accuracy: "
-                      "${locationProvider.accuracy.toStringAsFixed(1)} m",
+                      style: TextStyle(fontSize: 20, color: Colors.white),
                     ),
                   ),
                 ),
@@ -388,8 +326,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           // =========================
           // GPS LOADING OVERLAY
           // =========================
-          if (locationProvider.isLoading &&
-              locationProvider.latitude == null)
+          if (locationProvider.isLoading && locationProvider.latitude == null)
             Positioned(
               top: 16,
               left: 16,
@@ -433,11 +370,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _zoneRow(
-    String title,
-    String value, {
-    Color? valueColor,
-  }) {
+  Widget _zoneRow(String title, String value, {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
 
@@ -449,10 +382,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           Text(
             value,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: valueColor,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold, color: valueColor),
           ),
         ],
       ),
@@ -475,18 +405,10 @@ Widget _buildSystemTile({
             ? Colors.green.withOpacity(0.1)
             : Colors.grey.withOpacity(0.1),
 
-        child: Icon(
-          icon,
-          color: active ? Colors.green : Colors.grey,
-        ),
+        child: Icon(icon, color: active ? Colors.green : Colors.grey),
       ),
 
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
 
       subtitle: Text(subtitle),
 

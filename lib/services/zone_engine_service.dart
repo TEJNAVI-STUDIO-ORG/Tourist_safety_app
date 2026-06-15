@@ -9,7 +9,6 @@ import '../models/zone_model.dart';
 class ZoneEngineService {
   static List<ZoneModel> generateZones(List<dynamic> elements) {
     List<ZoneModel> zones = [];
-    int safeZoneCount = 0;
 
     for (var element in elements) {
       final tags = element['tags'] ?? {};
@@ -99,13 +98,6 @@ class ZoneEngineService {
       // Amenity
       // =========================
       else if (tags['amenity'] == 'hospital') {
-        // LIMIT SAFE ZONES
-        if (safeZoneCount >= 4) {
-          continue;
-        }
-
-        safeZoneCount++;
-
         type = 'safe_zone';
 
         color = Colors.green;
@@ -116,12 +108,6 @@ class ZoneEngineService {
 
         severity = 'safe';
       } else if (tags['amenity'] == 'police') {
-        if (safeZoneCount >= 4) {
-          continue;
-        }
-
-        safeZoneCount++;
-
         type = 'police';
 
         color = Colors.green;
@@ -132,12 +118,6 @@ class ZoneEngineService {
 
         severity = 'safe';
       } else if (tags['amenity'] == 'fire_station') {
-        if (safeZoneCount >= 4) {
-          continue;
-        }
-
-        safeZoneCount++;
-
         type = 'fire_station';
 
         color = Colors.green;
@@ -148,12 +128,6 @@ class ZoneEngineService {
 
         severity = 'safe';
       } else if (tags.containsKey('tourism')) {
-        if (safeZoneCount >= 4) {
-          continue;
-        }
-
-        safeZoneCount++;
-
         type = 'tourist_zone';
 
         color = Colors.green;
@@ -177,6 +151,17 @@ class ZoneEngineService {
         radius = 180;
 
         severity = 'danger';
+      }
+      // =========================
+      // FALLBACK FOR NAMED ENTITIES
+      // =========================
+      else if (tags.containsKey('name')) {
+        type = tags['amenity'] ?? tags['natural'] ?? tags['landuse'] ?? tags['tourism'] ?? 'poi';
+        
+        color = Colors.blue.withOpacity(0.5);
+        risk = 3;
+        radius = 80;
+        severity = 'caution';
       }
       // =========================
       // SKIP UNKNOWN
@@ -204,7 +189,7 @@ class ZoneEngineService {
       for (var existingZone in zones) {
         final distance = _calculateDistanceMeters(center, existingZone.center);
 
-        if (distance < 150) {
+        if (distance < 10) {
           tooClose = true;
 
           break;
@@ -221,7 +206,7 @@ class ZoneEngineService {
 
           type: type,
 
-          name: type.toUpperCase(),
+          name: (tags['name'] ?? type).toString().toUpperCase(),
 
           center: center,
 
@@ -235,12 +220,6 @@ class ZoneEngineService {
         ),
       );
     }
-
-    // =========================
-    // LIMIT ZONES
-    // =========================
-
-    zones = zones.take(15).toList();
 
     print("Generated Zones: ${zones.length}");
 

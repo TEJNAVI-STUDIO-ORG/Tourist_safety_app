@@ -56,6 +56,8 @@ class OverpassService {
   node["amenity"="fire_station"](around:1200,$lat,$lng);
   node["tourism"](around:1200,$lat,$lng);
   node["place"="town"](around:1500,$lat,$lng);
+  node["name"](around:1000,$lat,$lng);
+  way["name"](around:1000,$lat,$lng);
 );
 out center;
 ''';

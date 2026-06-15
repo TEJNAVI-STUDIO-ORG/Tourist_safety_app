@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 class AppTheme {
 
   static final lightTheme = ThemeData(
+    useMaterial3: true,
     brightness: Brightness.light,
-
     primarySwatch: Colors.red,
-
+    
     scaffoldBackgroundColor: Colors.white,
 
     appBarTheme: AppBarTheme(
@@ -19,10 +19,12 @@ class AppTheme {
       backgroundColor: Colors.white,
       selectedItemColor: Colors.red,
       unselectedItemColor: Colors.grey,
+      enableFeedback: false,
     ),
   );
 
   static final darkTheme = ThemeData(
+    useMaterial3: true,
     brightness: Brightness.dark,
 
     scaffoldBackgroundColor: Color(0xFF121212),
@@ -39,6 +41,7 @@ class AppTheme {
       backgroundColor: Color(0xFF1E1E1E),
       selectedItemColor: Colors.red,
       unselectedItemColor: Colors.grey,
+      enableFeedback: false,
     ),
   );
 }

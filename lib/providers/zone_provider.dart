@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/zone_model.dart';
 
@@ -21,6 +22,8 @@ class ZoneProvider extends ChangeNotifier {
   bool _loadingTriggered = false;
 
   bool isLoadingZones = false;
+
+  final Distance _distanceCalculator = const Distance();
 
   // =========================
   // SET ZONES
@@ -89,15 +92,15 @@ class ZoneProvider extends ChangeNotifier {
   // SAVE ZONES TO CACHE
   // =========================
 
-  Future<void> saveZonesToCache(List<ZoneModel> zonesToSave) async {
+  Future<void> saveZonesToCache(List<ZoneModel> zonesToSave, {double? lat, double? lng}) async {
     try {
       final jsonData = jsonEncode(
         zonesToSave.map((zone) => zone.toJson()).toList(),
       );
 
-      await ZoneCacheService.saveZones(jsonData);
+      await ZoneCacheService.saveZones(jsonData, lat: lat, lng: lng);
 
-      debugPrint("Zones Cached Successfully");
+      debugPrint("Zones Cached Successfully at location: $lat, $lng");
     } catch (e) {
       debugPrint("Cache Save Error: $e");
     }
@@ -111,9 +114,34 @@ class ZoneProvider extends ChangeNotifier {
     required double lat,
     required double lng,
     required SystemStatusProvider statusProvider,
+    bool forceRefresh = false,
   }) async {
     if (isLoadingZones) {
       return;
+    }
+
+    // =========================================================================
+    // SMART FETCH LOGIC
+    // =========================================================================
+    // Only fetch if forced OR if user moved significantly from last cached location
+    if (!forceRefresh && zones.isNotEmpty) {
+      final lastLoc = await ZoneCacheService.getLastLocation();
+      if (lastLoc != null) {
+        final lastPoint = LatLng(lastLoc['lat']!, lastLoc['lng']!);
+        final currentPoint = LatLng(lat, lng);
+        final distance = _distanceCalculator.as(LengthUnit.Meter, lastPoint, currentPoint);
+        
+        // If user moved less than 600 meters, don't re-fetch
+        if (distance < 600) {
+          debugPrint("User hasn't moved enough ($distance m). Skipping API fetch.");
+          statusProvider.updateZoneCount(
+            total: zones.length,
+            nearby: statusProvider.nearbyZones,
+            source: 'Cache (Nearby)',
+          );
+          return;
+        }
+      }
     }
 
     isLoadingZones = true;
@@ -127,31 +155,37 @@ class ZoneProvider extends ChangeNotifier {
         statusProvider: statusProvider,
       );
 
+      // CRITICAL FIX: If API fails (returns empty list), do NOT clear existing zones
+      if (elements.isEmpty && zones.isNotEmpty) {
+        debugPrint("API returned no results/failed. Keeping existing cached zones.");
+        isLoadingZones = false;
+        notifyListeners();
+        return;
+      }
+
       final generatedZones = ZoneEngineService.generateZones(elements);
 
       // =========================
       // TEST ZONE
       // =========================
+      
+      final prefs = await SharedPreferences.getInstance();
+      final showTest = prefs.getBool('showTestZone') ?? false;
 
-      generatedZones.add(
-        ZoneModel(
-          id: 'test_zone',
-
-          type: 'danger_test',
-
-          name: 'TEST DANGER ZONE',
-
-          center: LatLng(lat + 0.00002, lng),
-
-          radius: 2.22,
-
-          color: Colors.red,
-
-          riskScore: 10,
-
-          severity: 'danger',
-        ),
-      );
+      if (showTest) {
+        generatedZones.add(
+          ZoneModel(
+            id: 'test_zone',
+            type: 'danger_test',
+            name: 'TEST DANGER ZONE',
+            center: LatLng(lat + 0.0005, lng + 0.0005),
+            radius: 50.0,
+            color: Colors.red,
+            riskScore: 10,
+            severity: 'danger',
+          ),
+        );
+      }
       
       setZones(generatedZones);
 
@@ -164,8 +198,8 @@ class ZoneProvider extends ChangeNotifier {
         source: 'Live Memory',
       );
 
-      // SAVE CACHE
-      await saveZonesToCache(generatedZones);
+      // SAVE CACHE with new location
+      await saveZonesToCache(generatedZones, lat: lat, lng: lng);
 
       // BACKGROUND GEOFENCE
       await syncZonesForBackground(generatedZones);
@@ -173,6 +207,7 @@ class ZoneProvider extends ChangeNotifier {
       debugPrint("Generated Zones: ${generatedZones.length}");
     } catch (e) {
       debugPrint("Zone Loading Error: $e");
+      // Keep existing zones on error
     }
 
     isLoadingZones = false;
@@ -243,7 +278,13 @@ class ZoneProvider extends ChangeNotifier {
     required double lat,
     required double lng,
     required SystemStatusProvider statusProvider,
+    bool force = false,
   }) async {
-    await loadZones(lat: lat, lng: lng, statusProvider: statusProvider);
+    await loadZones(
+      lat: lat, 
+      lng: lng, 
+      statusProvider: statusProvider,
+      forceRefresh: force,
+    );
   }
 }

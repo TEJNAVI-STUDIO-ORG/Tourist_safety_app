@@ -23,9 +23,6 @@ class NotificationsScreen
       case 'fall':
         return Colors.amber;
 
-      case 'safe':
-        return Colors.green;
-
       default:
         return Colors.blueGrey;
     }
@@ -41,9 +38,6 @@ class NotificationsScreen
 
       case 'fall':
         return Icons.personal_injury;
-
-      case 'safe':
-        return Icons.check_circle;
 
       default:
         return Icons.notifications;
@@ -106,12 +100,6 @@ class NotificationsScreen
                   'zone',
                   'Zone',
                 ),
-
-                _filterChip(
-                  context,
-                  'safe',
-                  'Safe',
-                ),
               ],
             ),
           ),
@@ -120,8 +108,13 @@ class NotificationsScreen
             child:
                 notifications.isEmpty
                     ? const Center(
-                      child: Text(
-                        'No alerts yet',
+                      child: Padding(
+                        padding: EdgeInsets.all(24.0),
+                        child: Text(
+                          'Your safety history is clear. Alerts will appear here if any incidents occur.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ),
                     )
                     : ListView.builder(

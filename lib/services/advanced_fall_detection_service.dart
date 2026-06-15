@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -63,7 +64,7 @@ class AdvancedFallDetectionService {
 
     _isProcessingFall = true;
 
-    _showFallDialog();
+    // Handled by BackgroundService for unified breakthrough experience
   }
 
   static void _startListening(BuildContext context) {
@@ -189,6 +190,9 @@ class AdvancedFallDetectionService {
     await NotificationService.showNotification(
       title: 'Possible Fall Detected',
       body: 'Tap to confirm safety',
+      actions: [
+        const AndroidNotificationAction('safe_action', "I'M SAFE", showsUserInterface: false),
+      ],
     );
 
     await _saveNotification(
@@ -203,30 +207,7 @@ class AdvancedFallDetectionService {
       Vibration.vibrate(duration: 1500);
     }
 
-    _showFallDialog();
-  }
-
-  static void _showFallDialog() {
-    final ctx = navigatorKey.currentContext;
-
-    if (ctx == null) return;
-
-    Future<void>.delayed(
-      const Duration(milliseconds: 500),
-      () {
-        if (!ctx.mounted) return;
-
-        showDialog<void>(
-          context: ctx,
-          barrierDismissible: false,
-          builder: (dialogContext) =>
-              _FallCountdownDialog(
-            onSafe: _reset,
-            onEmergency: _triggerEmergency,
-          ),
-        );
-      },
-    );
+    // Handled by BackgroundService for unified breakthrough experience
   }
 
   static Future<void> _saveNotification({
@@ -246,16 +227,10 @@ class AdvancedFallDetectionService {
     );
 
     await provider.addNotification(
-      AppNotification(
-        id: DateTime.now()
-            .millisecondsSinceEpoch
-            .toString(),
-        title: title,
-        body: body,
-        time: DateTime.now(),
-        severity: 'high',
-        type: type,
-      ),
+      title: title,
+      body: body,
+      type: type,
+      severity: 'high',
     );
   }
 
@@ -328,10 +303,6 @@ class AdvancedFallDetectionService {
         '${time.second.toString().padLeft(2, '0')} $period';
   }
 
-  static void _triggerEmergency() {
-    _reset();
-  }
-
   static void _reset() {
     _freeFallTime = null;
 
@@ -352,97 +323,5 @@ class AdvancedFallDetectionService {
   static void stopDetection() {
     _subscription?.cancel();
     _subscription = null;
-  }
-}
-
-class _FallCountdownDialog
-    extends StatefulWidget {
-  const _FallCountdownDialog({
-    required this.onEmergency,
-    required this.onSafe,
-  });
-
-  final VoidCallback onEmergency;
-
-  final VoidCallback onSafe;
-
-  @override
-  State<_FallCountdownDialog>
-      createState() =>
-          _FallCountdownDialogState();
-}
-
-class _FallCountdownDialogState
-    extends State<_FallCountdownDialog> {
-  int _countdown = 10;
-
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _timer = Timer.periodic(
-      const Duration(seconds: 1),
-      (Timer t) {
-        if (!mounted) {
-          t.cancel();
-
-          return;
-        }
-
-        setState(() {
-          _countdown--;
-        });
-
-        if (_countdown <= 0) {
-          t.cancel();
-
-          Navigator.of(
-            context,
-            rootNavigator: true,
-          ).pop();
-
-          widget.onEmergency();
-        }
-      },
-    );
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text(
-        'Possible Fall Detected',
-      ),
-
-      content: Text(
-        'Sending SOS in $_countdown seconds',
-      ),
-
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(
-              context,
-              rootNavigator: true,
-            ).pop();
-
-            widget.onSafe();
-          },
-
-          child: const Text(
-            'I AM SAFE',
-          ),
-        ),
-      ],
-    );
   }
 }

@@ -34,7 +34,21 @@ class NotificationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addNotification(AppNotification notification) async {
+  Future<void> addNotification({
+    required String title,
+    required String body,
+    required String type,
+    String severity = 'medium',
+  }) async {
+    final notification = AppNotification(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: title,
+      body: body,
+      time: DateTime.now(),
+      type: type,
+      severity: severity,
+    );
+
     notifications.add(notification);
 
     final prefs = await SharedPreferences.getInstance();

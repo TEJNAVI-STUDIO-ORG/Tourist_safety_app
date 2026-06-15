@@ -17,6 +17,7 @@
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH"/>
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
@@ -59,10 +60,10 @@
         <!-- ══ Fall Detection Native Service ══ -->
         <service
             android:name=".FallDetectionService"
-            android:foregroundServiceType="location"
             android:exported="false"
             android:enabled="true"
-            android:stopWithTask="false"/>
+            android:stopWithTask="false"
+            android:foregroundServiceType="health"/>
 
         <!-- Handles 'I AM SAFE' button on the fall alert notification -->
         <receiver

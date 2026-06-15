@@ -1,8 +1,15 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/service_health_monitor.dart';
 
 class SystemStatusProvider extends ChangeNotifier {
+  ServiceHealthReport? lastHealthReport;
+
+  void updateHealthReport(ServiceHealthReport report) {
+    lastHealthReport = report;
+    notifyListeners();
+  }
+
   // =========================
   // GPS
   // =========================
@@ -56,6 +63,8 @@ class SystemStatusProvider extends ChangeNotifier {
   String fallDetectionStatus = "Inactive";
   DateTime? lastFallCheck;
   String lastFallEvent = "No recent fall events";
+  String sensorStatus = "Unknown";
+  DateTime? lastActiveTimestamp;
 
   // =========================
   // NOTIFICATIONS
@@ -75,6 +84,7 @@ class SystemStatusProvider extends ChangeNotifier {
   String backgroundServiceStatus = "Stopped";
   DateTime? lastPulse;
   DateTime? lastBackgroundCheck;
+  DateTime? serviceUptime;
 
   // =========================
   // SOS
@@ -94,6 +104,9 @@ class SystemStatusProvider extends ChangeNotifier {
   static const String keyLastFallEvent = 'status_last_fall_event';
   static const String keyLastPulse = 'bg_last_heartbeat';
   static const String keyLastBgCheck = 'bg_last_check';
+  static const String keyServiceUptime = 'bg_service_uptime';
+  static const String keySensorStatus = 'fall_sensor_status';
+  static const String keyInsideDangerZone = 'status_inside_danger_zone';
 
   // =========================
   // INITIALIZATION
@@ -124,11 +137,22 @@ class SystemStatusProvider extends ChangeNotifier {
     final pulseStr = prefs.getString(keyLastPulse);
     if (pulseStr != null) {
       lastPulse = DateTime.tryParse(pulseStr);
+      lastActiveTimestamp = lastPulse;
     }
 
     final bgCheckStr = prefs.getString(keyLastBgCheck);
     if (bgCheckStr != null) {
       lastBackgroundCheck = DateTime.tryParse(bgCheckStr);
+    }
+
+    final uptimeStr = prefs.getString(keyServiceUptime);
+    if (uptimeStr != null) {
+      serviceUptime = DateTime.tryParse(uptimeStr);
+    }
+
+    final savedSensorStatus = prefs.getString(keySensorStatus);
+    if (savedSensorStatus != null) {
+      sensorStatus = savedSensorStatus;
     }
 
     final savedFallEvent = prefs.getString(keyLastFallEvent);
@@ -146,20 +170,21 @@ class SystemStatusProvider extends ChangeNotifier {
       locationName = savedLocationName;
     }
 
+    insideDangerZone = prefs.getBool(keyInsideDangerZone) ?? false;
+
     // Load background-service counts if present
     final bgTotalZones = prefs.getInt('bg_total_zones');
     if (bgTotalZones != null) {
       totalZones = bgTotalZones;
     }
 
-    final activeNearby = prefs.getInt('active_zone_count');
+    final activeInside = prefs.getInt('active_zone_count') ?? 0;
+    enteredZones = activeInside;
 
     if (totalZones > 0 && zoneSource == "Unknown") {
       zoneSource = 'Cache Only';
     }
-    if (activeNearby != null) {
-      nearbyZones = activeNearby;
-    }
+    
     // Load next scheduled background scan
     final nextScanStr = prefs.getString('bg_next_scan');
     if (nextScanStr != null) {
@@ -226,11 +251,15 @@ class SystemStatusProvider extends ChangeNotifier {
     required bool active,
     required String status,
     bool? insideZone,
-  }) {
+  }) async {
     geofenceActive = active;
     geofenceStatus = status;
     insideDangerZone = insideZone ?? false;
     lastGeofenceCheck = DateTime.now();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(keyInsideDangerZone, insideDangerZone);
+
     notifyListeners();
   }
 

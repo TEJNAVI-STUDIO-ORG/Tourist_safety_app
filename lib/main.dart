@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
@@ -26,6 +25,7 @@ import 'providers/system_status_provider.dart';
 
 import 'screens/loading_screen.dart';
 
+
 import './core/global.dart';
 
 Future<void> main() async {
@@ -33,7 +33,7 @@ Future<void> main() async {
 
   await PermissionService.requestAllPermissions();
 
-  // Never block the first frame on plugin init (can hang on some OEMs).
+  // Initialize notifications early
   unawaited(
     NotificationService.initialize().catchError((Object e, StackTrace st) {
       debugPrint('NotificationService.initialize failed: $e\n$st');
@@ -44,20 +44,14 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AppProvider()),
-
         ChangeNotifierProvider(create: (_) => LocationProvider()),
-
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
-
         ChangeNotifierProvider(
           create: (_) => NotificationProvider()..loadNotifications(),
         ),
-
         ChangeNotifierProvider(create: (_) => SystemStatusProvider()),
-
         ChangeNotifierProvider(create: (_) => ZoneProvider()),
       ],
-
       child: const TouristSafeApp(),
     ),
   );
@@ -76,104 +70,43 @@ class _TouristSafeAppState extends State<TouristSafeApp> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // 2. Load core providers
       final location = context.read<LocationProvider>();
       final zone = context.read<ZoneProvider>();
       final status = context.read<SystemStatusProvider>();
+      final settings = context.read<SettingsProvider>();
+      final notification = context.read<NotificationProvider>();
 
+      // 3. Connect providers
+      location.connectSystemStatus(status);
+      settings.setSystemStatusProvider(status);
+
+      // 4. Initial load sequence
       zone.triggerInitialLoad(
         context: context,
         locationProvider: location,
         statusProvider: status,
       );
-      if (!mounted) return;
-
-      // =========================
-      // PERMISSIONS
-      // =========================
-
-      await Permission.activityRecognition.request();
 
       await initializeService();
-
-      if (mounted) {
-        ServiceHealthMonitor.start(context);
-        unawaited(BatteryOptimizationService.checkAndShowOptimizationDialog(context));
-      }
-
-      if (!mounted) return;
-
-      // =========================
-      // INITIAL STATUS CHECK
-      // =========================
-
-      // Initialize all system statuses based on current settings
+      ServiceHealthMonitor.start(context);
+      
+      // 5. App Permissions & Services
+      await Permission.activityRecognition.request();
       await SystemStatusService.initializeAllStatus(context);
-
-      if (!mounted) return;
-
-      // =========================
-      // LOCATION
-      // =========================
-
-      final locationProvider = Provider.of<LocationProvider>(
-        context,
-        listen: false,
-      );
-
-      final systemStatusProvider = Provider.of<SystemStatusProvider>(
-        context,
-        listen: false,
-      );
-
-      final settingsProvider = Provider.of<SettingsProvider>(
-        context,
-        listen: false,
-      );
-
-      locationProvider.connectSystemStatus(systemStatusProvider);
-      settingsProvider.setSystemStatusProvider(systemStatusProvider);
-
-      final zoneProvider = Provider.of<ZoneProvider>(context, listen: false);
-      final notificationProvider = Provider.of<NotificationProvider>(
-        context,
-        listen: false,
-      );
-
-      await locationProvider.requestPermissions();
-
-      if (!mounted) return;
-
+      
       GeofenceService.startMonitoring(
-        locationProvider: locationProvider,
-
-        zoneProvider: zoneProvider,
-
-        notificationProvider: notificationProvider,
+        locationProvider: location,
+        zoneProvider: zone,
+        notificationProvider: notification,
       );
 
-      unawaited(locationProvider.startLiveTracking());
+      unawaited(location.startLiveTracking());
+      unawaited(BatteryOptimizationService.checkAndShowOptimizationDialog(context));
 
-      if (!mounted) return;
-
-      // =========================
-      // FALL DETECTION
-      // =========================
-
-      await FlutterBackgroundService().startService();
-
-      if (mounted) {
-        SystemStatusService.updateBackgroundService(context, active: true);
-      }
-      
+      // 6. Fall Detection
       await NativeFallBridge.initialize();
-      
-      if (mounted) {
-        AdvancedFallDetectionService.initialize(context);
-        SystemStatusService.updateFallDetection(context, active: true);
-      }
-
-      // Start the native foreground service (survives app kill + reboot).
-      // It also kicks off the Dart-side accelerometer listener as a fallback.
+      AdvancedFallDetectionService.initialize(context);
     });
   }
 
@@ -184,13 +117,9 @@ class _TouristSafeAppState extends State<TouristSafeApp> {
     return MaterialApp(
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
-
       theme: AppTheme.lightTheme,
-
       darkTheme: AppTheme.darkTheme,
-
       themeMode: settingsProvider.darkMode ? ThemeMode.dark : ThemeMode.light,
-
       home: const LoadingScreen(),
     );
   }

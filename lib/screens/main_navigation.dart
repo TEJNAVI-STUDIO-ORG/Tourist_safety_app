@@ -29,43 +29,46 @@ class _MainNavigationState
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: screens[currentIndex],
+        child: IndexedStack(
+          index: currentIndex,
+          children: screens,
+        ),
       ),
 
-      bottomNavigationBar:
-          BottomNavigationBar(
-        currentIndex: currentIndex,
-
-        type:
-            BottomNavigationBarType.fixed,
-
-        onTap: (index) {
-          setState(() {
-            currentIndex = index;
-          });
-        },
-
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: "Dashboard",
-          ),
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: "Tracking",
-          ),
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.warning),
-            label: "Emergency",
-          ),
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: "Settings",
-          ),
-        ],
+      bottomNavigationBar: Theme(
+        data: Theme.of(context).copyWith(
+          splashFactory: NoSplash.splashFactory,
+          highlightColor: Colors.transparent,
+        ),
+        child: BottomNavigationBar(
+          currentIndex: currentIndex,
+          selectedFontSize: 12,
+          unselectedFontSize: 12,
+          type: BottomNavigationBarType.fixed,
+          onTap: (index) {
+            setState(() {
+              currentIndex = index;
+            });
+          },
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: "Dashboard",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.map),
+              label: "Tracking",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.warning),
+              label: "Emergency",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: "Settings",
+            ),
+          ],
+        ),
       ),
     );
   }

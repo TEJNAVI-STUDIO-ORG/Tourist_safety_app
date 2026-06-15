@@ -3,6 +3,7 @@ package com.example.tourist_safety_app
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.hardware.*
 import android.os.*
 import androidx.core.app.NotificationCompat
@@ -39,7 +40,16 @@ class FallDetectionService : Service(), SensorEventListener {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
-        startForeground(MONITOR_NOTIF_ID, buildMonitorNotification())
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                MONITOR_NOTIF_ID,
+                buildMonitorNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
+            )
+        } else {
+            startForeground(MONITOR_NOTIF_ID, buildMonitorNotification())
+        }
 
         // Partial wake-lock keeps CPU alive when screen is off
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager

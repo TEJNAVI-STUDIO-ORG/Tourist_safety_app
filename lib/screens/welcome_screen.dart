@@ -1,72 +1,169 @@
 import 'package:flutter/material.dart';
 import 'main_navigation.dart';
 
-class WelcomeScreen extends StatelessWidget {
+class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
+}
 
+class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _logoFade;
+  late Animation<double> _textFade;
+  late Animation<double> _buttonFade;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+
+    _logoFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.5, curve: Curves.easeOut)),
+    );
+
+    _textFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.3, 0.8, curve: Curves.easeOut)),
+    );
+
+    _buttonFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.6, 1.0, curve: Curves.easeOut)),
+    );
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24),
-
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-
             children: [
-              // LOGO
-              Center(child: Image.asset('assets/images/logo.png', height: 150)),
-
-              const SizedBox(height: 30),
-
-              const Text(
-                "Your Ultimate Companion",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
+              const Spacer(),
+              
+              // LOGO Animation with CIRCULAR CLIP
+              FadeTransition(
+                opacity: _logoFade,
+                child: ScaleTransition(
+                  scale: _logoFade,
+                  child: Center(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(40),
+                      child: Image.asset('assets/images/logo.jpeg', height: 300),
+                    ),
+                  ),
                 ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 50),
 
-              const Text(
-                "Live Hazard Detection",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70, fontSize: 16),
+              // Title and Subtitle Animation
+              FadeTransition(
+                opacity: _textFade,
+                child: Column(
+                  children: [
+                    Text(
+                      "Welcome to TouriSafe",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black,
+                        fontSize: 34,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
 
-              const SizedBox(height: 60),
+              const Spacer(),
 
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF97316),
-
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+              // Button Animation
+              FadeTransition(
+                opacity: _buttonFade,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 64,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark ? const Color(0xFFF97316) : Colors.red,
+                      elevation: 4,
+                      shadowColor: (isDark ? const Color(0xFFF97316) : Colors.red).withOpacity(0.4),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MainNavigation()),
+                      );
+                    },
+                    child: const Text(
+                      "Get Started",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
+                ),
+              ),
 
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
+              const SizedBox(height: 30),
 
-                      MaterialPageRoute(builder: (_) => const MainNavigation()),
-                    );
-                  },
-
-                  child: const Text(
-                    "Get Started",
-                    style: TextStyle(fontSize: 18, color: Colors.white),
-                  ),
+              // COPYRIGHT
+              FadeTransition(
+                opacity: _buttonFade,
+                child: Column(
+                  children: [
+                    const Text(
+                      "Designed & Developed by",
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 10,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      "Aditya Vispute",
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 12),
+                    Text(
+                      "© 2026 TouriSafe. All rights reserved.",
+                      style: TextStyle(
+                        color: isDark ? Colors.white38 : Colors.black38,
+                        fontSize: 12,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/system_status_provider.dart';
+import '../services/service_health_monitor.dart';
 
 class SystemStatusScreen extends StatelessWidget {
   const SystemStatusScreen({
@@ -20,6 +21,14 @@ class SystemStatusScreen extends StatelessWidget {
     return "${hour12.toString().padLeft(2, '0')}:"
         "${time.minute.toString().padLeft(2, '0')}:"
         "${time.second.toString().padLeft(2, '0')} $period";
+  }
+
+  String formatDuration(DateTime? startTime) {
+    if (startTime == null) return "0m";
+    final diff = DateTime.now().difference(startTime);
+    if (diff.inDays > 0) return "${diff.inDays}d ${diff.inHours % 24}h";
+    if (diff.inHours > 0) return "${diff.inHours}h ${diff.inMinutes % 60}m";
+    return "${diff.inMinutes}m ${diff.inSeconds % 60}s";
   }
 
   Widget buildTile({
@@ -110,6 +119,78 @@ class SystemStatusScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
 
             children: [
+              // =========================
+              // HEALTH REPORT
+              // =========================
+              if (status.lastHealthReport != null)
+                buildTile(
+                  title: "System Health Report",
+                  value: "Overall: ${status.lastHealthReport!.isHealthy ? "HEALTHY" : "ISSUES DETECTED"}\n\n"
+                      "GPS HW: ${status.lastHealthReport!.gpsEnabled ? "OK" : "OFF"}\n"
+                      "Location Perm: ${status.lastHealthReport!.locationPermission ? "OK" : "MISSING"}\n"
+                      "Background Perm: ${status.lastHealthReport!.backgroundPermission ? "OK" : "MISSING"}\n"
+                      "SMS Perm: ${status.lastHealthReport!.smsPermission ? "OK" : "MISSING"}\n"
+                      "Notification Perm: ${status.lastHealthReport!.notificationPermission ? "OK" : "MISSING"}\n"
+                      "Background Service: ${status.lastHealthReport!.backgroundServiceRunning ? "RUNNING" : "DEAD"}\n"
+                      "Battery Optimization: ${status.lastHealthReport!.batteryOptimizationDisabled ? "DISABLED" : "ENABLED (FIX)"}\n"
+                      "Last Check: ${formatTime(status.lastHealthReport!.timestamp)}",
+                  icon: status.lastHealthReport!.isHealthy ? Icons.health_and_safety : Icons.error_outline,
+                  active: status.lastHealthReport!.isHealthy,
+                ),
+
+              if (status.lastHealthReport != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      // Show loading dialog
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (ctx) => const Center(
+                          child: Card(
+                            child: Padding(
+                              padding: EdgeInsets.all(20),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(),
+                                  SizedBox(height: 15),
+                                  Text("Repairing Services..."),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+
+                      try {
+                        await ServiceHealthMonitor.checkAndRepair(context);
+                      } finally {
+                        if (context.mounted) Navigator.pop(context);
+                      }
+                      
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Repair sequence completed. Checking health..."),
+                            backgroundColor: Colors.blueAccent,
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.build_circle),
+                    label: const Text("SMART REPAIR & RESTART"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 10),
 
               // =========================
               // LIVE STATUS HEADER
@@ -171,7 +252,7 @@ class SystemStatusScreen extends StatelessWidget {
                     Text(
                       "GPS: ${status.gpsActive ? "ONLINE" : "OFFLINE"}"
                       "\nZones Loaded: ${status.totalZones}"
-                      "\nNearby Danger Zones: ${status.nearbyZones}"
+                      "\nNearby Zones: ${status.nearbyZones}"
                       "\nBackground Tracking: ${status.backgroundServiceActive ? "ACTIVE" : "STOPPED"}",
 
                       style: const TextStyle(
@@ -241,7 +322,7 @@ class SystemStatusScreen extends StatelessWidget {
 
                 icon: Icons.map,
 
-                active: status.totalZones > 0 || status.geofenceActive,
+                active: (status.totalZones > 0 || status.geofenceActive) && !status.geofenceStatus.contains("Privacy Mode"),
               ),
 
               // =========================
@@ -253,13 +334,14 @@ class SystemStatusScreen extends StatelessWidget {
 
                 value:
                     "${status.fallDetectionStatus}\n\n"
-                    "Sensor State: ${status.fallDetectionActive ? "MONITORING" : "DISABLED"}\n"
+                    "Monitoring State: ${status.fallDetectionActive ? "ACTIVE" : "DISABLED"}\n"
+                    "Sensor Status: ${status.sensorStatus.toUpperCase()}\n"
                     "Last Fall Event: ${status.lastFallEvent}\n"
                     "Last Sensor Update: ${formatTime(status.lastFallCheck)}",
 
                 icon: Icons.warning_amber_rounded,
 
-                active: status.fallDetectionActive,
+                active: status.fallDetectionActive && status.sensorStatus == 'active',
               ),
 
               // =========================
@@ -290,11 +372,11 @@ class SystemStatusScreen extends StatelessWidget {
 
                 value:
                     "${status.backgroundServiceStatus}\n\n"
+                    "Service Uptime: ${formatDuration(status.serviceUptime)}\n"
+                    "Last Pulse (Heartbeat): ${formatTime(status.lastPulse)}\n"
+                    "Last Active: ${formatTime(status.lastActiveTimestamp)}\n"
                     "Foreground Tracking: ${status.backgroundServiceActive ? "RUNNING" : "STOPPED"}\n"
-                    "Last Pulse: ${formatTime(status.lastPulse)}\n"
-                    "Last BG Scan: ${formatTime(status.lastBackgroundCheck)}\n"
-                    "Active Zones (bg): ${status.enteredZones}\n"
-                    "Next Scan: ${formatTime(status.nextZoneScan)}",
+                    "Last BG Scan: ${formatTime(status.lastBackgroundCheck)}",
 
                 icon: Icons.sync,
 

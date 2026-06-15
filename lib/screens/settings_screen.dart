@@ -37,28 +37,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
 
           children: [
-            // 🌙 DARK MODE
-            Card(
-              child: SwitchListTile(
-                title: const Text("Dark Mode"),
-
-                subtitle: const Text("Enable dark theme"),
-
-                value: settingsProvider.darkMode,
-
-                onChanged: (value) {
-                  settingsProvider.toggleDarkMode();
-                },
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
             // 📞 CONTACTS TITLE
-            const Text(
-              "Emergency Contacts",
-
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Emergency Contacts",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "Manage people who will be notified in case of an emergency.",
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
             ),
 
             const SizedBox(height: 10),
@@ -130,10 +121,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 25),
 
             // 🔔 ALERT SETTINGS
-            const Text(
-              "Alert Preferences",
-
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Alert Preferences",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "Configure how and when the app should monitor your safety.",
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
             ),
 
             const SizedBox(height: 10),
@@ -253,7 +252,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       );
                     },
                   ),
+
+                  // 🧪 TEST ZONE
+                  SwitchListTile(
+                    title: const Text("Show Test Danger Zone"),
+                    subtitle: const Text("Display a virtual danger zone near you for testing"),
+                    value: settingsProvider.showTestZone,
+                    onChanged: (value) {
+                      settingsProvider.toggleShowTestZone();
+                      
+                      // Refresh zones to reflect change
+                      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+                      final zoneProvider = Provider.of<ZoneProvider>(context, listen: false);
+                      
+                      if (locationProvider.latitude != null && locationProvider.longitude != null) {
+                        zoneProvider.refreshZones(
+                          lat: locationProvider.latitude!,
+                          lng: locationProvider.longitude!,
+                          statusProvider: systemStatusProvider,
+                        );
+                      }
+                    },
+                  ),
                 ],
+              ),
+            ),
+
+            const SizedBox(height: 25),
+
+             const Text(
+              "Appearance",
+
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 10),
+
+
+            // 🌙 DARK MODE
+            Card(
+              child: SwitchListTile(
+                title: const Text("Dark Mode"),
+
+                subtitle: const Text("Enable dark theme"),
+
+                value: settingsProvider.darkMode,
+
+                onChanged: (value) {
+                  settingsProvider.toggleDarkMode();
+                },
               ),
             ),
 
@@ -263,22 +310,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Card(
               child: Column(
                 children: [
-                  const ListTile(
-                    leading: Icon(Icons.info),
+                  ListTile(
+                    leading: Icon(
+                      Icons.shield,
+                      color: Color.lerp(Theme.of(context).colorScheme.primary, Colors.black, 0.1),
+                    ),
 
-                    title: Text("TouristSafe"),
+                    title: const Text("TouriSafe"),
 
-                    subtitle: Text("Version 1.0.0"),
+                    subtitle: const Text("Version 2.40.23"),
                   ),
 
                   const Divider(height: 1),
 
                   ListTile(
-                    leading: const Icon(Icons.privacy_tip),
+                    leading: Icon(Icons.policy_outlined, color: Color.lerp(Theme.of(context).colorScheme.primary, Colors.black, 0.1)),
 
                     title: const Text("Privacy Policy"),
 
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 14),
 
                     onTap: () {
                       Navigator.push(
@@ -290,12 +340,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                   ),
 
-                  ListTile(
-                    leading: const Icon(Icons.description),
+                  ListTile( 
+                    leading: Icon(Icons.gavel_outlined, color: Color.lerp(Theme.of(context).colorScheme.primary, Colors.black, 0.1)),
 
                     title: const Text("Terms of Service"),
 
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 14),
 
                     onTap: () {
                       Navigator.push(
@@ -308,11 +358,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
 
                   ListTile(
-                    leading: const Icon(Icons.android),
+                    leading: Icon(Icons.info_outline, color: Color.lerp(Theme.of(context).colorScheme.primary, Colors.black, 0.1)),
 
-                    title: const Text("About App"),
+                    title: const Text("About TouriSafe"),
 
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 14),
 
                     onTap: () {
                       Navigator.push(

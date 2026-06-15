@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 
 import '../providers/system_status_provider.dart';
 import '../providers/location_provider.dart';
@@ -19,6 +20,16 @@ class SystemStatusService {
     
     // Load cached location and Overpass status first
     await systemProvider.loadCache();
+    
+    if (settingsProvider.privateMode) {
+      systemProvider.updateGps(active: false, status: "Disabled by Privacy Mode");
+      systemProvider.updateGeofence(active: false, status: "Disabled by Privacy Mode");
+      systemProvider.updateFallDetection(active: false, status: "Disabled by Privacy Mode");
+      systemProvider.updateNotifications(active: false, status: "Disabled by Privacy Mode");
+      systemProvider.updateBackgroundService(active: false, status: "Disabled by Privacy Mode");
+      systemProvider.updateOverpass(active: false, status: "Disabled by Privacy Mode");
+      return;
+    }
     
     // Initialize notification services based on settings
     systemProvider.updateNotifications(
@@ -51,7 +62,8 @@ class SystemStatusService {
     );
     
     // Initialize background service status
-    updateBackgroundService(context, active: true); // Assume running if app launched
+    final isRunning = await FlutterBackgroundService().isRunning();
+    updateBackgroundService(context, active: isRunning);
   }
 
   // =========================

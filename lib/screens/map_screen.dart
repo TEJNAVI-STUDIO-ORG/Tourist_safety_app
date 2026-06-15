@@ -145,90 +145,76 @@ class _MapScreenState extends State<MapScreen> {
           ),
 
           // =========================
-          // 🔝 TOP COMPACT STATUS BAR
+          // 📍 BOTTOM TRANSLUCENT STATUS BAR
           // =========================
           Positioned(
-            top: 10,
-            left: 10,
-            right: 10,
+            bottom: 17,
+            left: 20,
+            right: 90, // Increased to accommodate larger button
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: statusProvider.insideDangerZone
-                    ? Colors.red.withOpacity(0.85)
-                    : Colors.green.withOpacity(0.85),
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.black.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    "GPS: ${statusProvider.gpsStatus}",
-                    style: const TextStyle(color: Colors.white),
-                  ),
-
-                  Text(
-                    zoneProvider.isLoadingZones
-                        ? "Refreshing..."
-                        : "Zones: ${zoneProvider.zones.length}",
-                    style: const TextStyle(color: Colors.white),
-                  ),
-
-                  Text(
-                    statusProvider.insideDangerZone ? "DANGER" : "SAFE",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                  // Safety Dot
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: statusProvider.insideDangerZone ? Colors.red : Colors.green,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (statusProvider.insideDangerZone ? Colors.red : Colors.green).withOpacity(0.5),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          // =========================
-          // 📍 LEFT FLOATING ZONE PILL
-          // =========================
-          Positioned(
-            top: 100,
-            left: 10,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  const Text("ZONES", style: TextStyle(color: Colors.white)),
+                  const SizedBox(width: 12),
+                  
+                  // Zone Info
                   Text(
-                    "${zoneProvider.zones.length}",
-                    style: const TextStyle(color: Colors.white),
+                    "Zones: ${zoneProvider.zones.length}",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ],
-              ),
-            ),
-          ),
+                  
+                  const Spacer(),
 
-          // =========================
-          // 📡 RIGHT FLOATING GPS PILL
-          // =========================
-          Positioned(
-            top: 100,
-            right: 10,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  const Text("GPS", style: TextStyle(color: Colors.white)),
-                  Text(
-                    "${locationProvider.accuracy.toStringAsFixed(0)}m",
-                    style: const TextStyle(color: Colors.white),
-                  ),
+                  // Refreshing State
+                  if (zoneProvider.isLoadingZones)
+                    const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          "Refreshing...",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -238,9 +224,13 @@ class _MapScreenState extends State<MapScreen> {
           // 🎯 RECENTER BUTTON
           // =========================
           Positioned(
-            bottom: 40,
-            right: 20,
+            bottom: 15, // Slightly lower to center-align with the bar
+            right: 15,
             child: FloatingActionButton(
+              heroTag: "btn_map_recenter",
+              shape: const CircleBorder(),
+              backgroundColor: Colors.white.withOpacity(0.9),
+              foregroundColor: Colors.blueAccent,
               onPressed: () {
                 mapController.move(currentLocation, 15);
               },
@@ -249,11 +239,11 @@ class _MapScreenState extends State<MapScreen> {
           ),
 
           // =========================
-          // OVER LAY LOADING INDICATOR WHEN GPS IS LOCATING
+          // GPS LOADING OVERLAY
           // =========================
           if (locationProvider.isLoading && locationProvider.latitude == null)
             Positioned(
-              top: 70,
+              top: 20,
               left: 20,
               right: 20,
               child: Container(

@@ -1,14 +1,22 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/contact_model.dart';
 import '../services/sos_service.dart';
+import '../services/geofence_service.dart';
+import '../services/advanced_fall_detection_service.dart';
+import '../services/system_status_service.dart';
 import '../providers/system_status_provider.dart';
+import '../providers/location_provider.dart';
+import '../providers/zone_provider.dart';
+import '../providers/notification_provider.dart';
+import '../core/global.dart';
 
 class SettingsProvider extends ChangeNotifier {
 
-  bool darkMode = true;
+  bool darkMode = false;
 
   bool geofenceAlerts = true;
 
@@ -19,6 +27,8 @@ class SettingsProvider extends ChangeNotifier {
   bool pushNotifications = true;
 
   bool fallDetection = true;
+
+  bool showTestZone = false;
 
   List<ContactModel> contacts = [];
 
@@ -113,8 +123,39 @@ class SettingsProvider extends ChangeNotifier {
     privateMode = !privateMode;
 
     saveSettings();
+    
+    _handlePrivacyModeChange();
 
     notifyListeners();
+  }
+
+  void _handlePrivacyModeChange() {
+    if (systemStatusProvider != null) {
+      final ctx = navigatorKey.currentContext;
+      if (ctx != null) {
+        final locationProvider = Provider.of<LocationProvider>(ctx, listen: false);
+        
+        if (privateMode) {
+          locationProvider.stopTracking();
+          GeofenceService.stopMonitoring();
+          AdvancedFallDetectionService.stopDetection();
+          // We don't stop the background service entirely to keep the heartbeat/uptime monitoring,
+          // but we can signal it to stop active tracking if needed.
+          // For now, stopping the main streams is enough as per requirements.
+        } else {
+          locationProvider.resumeTracking();
+          GeofenceService.startMonitoring(
+            locationProvider: locationProvider,
+            zoneProvider: Provider.of<ZoneProvider>(ctx, listen: false),
+            notificationProvider: Provider.of<NotificationProvider>(ctx, listen: false),
+          );
+          AdvancedFallDetectionService.initialize(ctx);
+        }
+      }
+      
+      // Update all statuses immediately
+      SystemStatusService.initializeAllStatus(navigatorKey.currentContext!);
+    }
   }
 
   // 🩹 FALL DETECTION
@@ -125,6 +166,13 @@ class SettingsProvider extends ChangeNotifier {
 
     saveSettings();
 
+    notifyListeners();
+  }
+
+  // 🧪 TEST ZONE
+  void toggleShowTestZone() {
+    showTestZone = !showTestZone;
+    saveSettings();
     notifyListeners();
   }
 
@@ -251,6 +299,11 @@ class SettingsProvider extends ChangeNotifier {
       fallDetection,
     );
 
+    await prefs.setBool(
+      "showTestZone",
+      showTestZone,
+    );
+
     // CONTACTS
     List<String> contactList =
         contacts.map((contact) {
@@ -259,7 +312,7 @@ class SettingsProvider extends ChangeNotifier {
         contact.toJson(),
       );
 
-    }).toList();
+    }).toList().cast<String>();
 
     await prefs.setStringList(
       "contacts",
@@ -276,7 +329,7 @@ class SettingsProvider extends ChangeNotifier {
 
     darkMode =
         prefs.getBool("darkMode")
-            ?? true;
+            ?? false;
 
     geofenceAlerts =
         prefs.getBool(
@@ -312,8 +365,8 @@ class SettingsProvider extends ChangeNotifier {
     prefs.getString(
       "sosMessageTemplate",
     ) ??
-    "🚨 EMERGENCY SOS!\n\n"
-    "I need help immediately.\n\n"
+    "🚨 EMERGENCY SOS!\n"
+    "I need help immediately.\n"
     "My live location:\n"
     "{location}";
 
@@ -340,7 +393,7 @@ class SettingsProvider extends ChangeNotifier {
 
   void resetSettings() {
 
-    darkMode = true;
+    darkMode = false;
 
     geofenceAlerts = true;
 
