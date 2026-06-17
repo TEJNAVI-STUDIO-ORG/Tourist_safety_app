@@ -11,7 +11,7 @@ import 'package:vibration/vibration.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../core/global.dart';
-import '../models/notification_model.dart';
+
 import '../models/zone_model.dart';
 import '../providers/location_provider.dart';
 import '../providers/notification_provider.dart';

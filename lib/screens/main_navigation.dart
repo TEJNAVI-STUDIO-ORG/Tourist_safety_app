@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
 import 'dashboard_screen.dart';
 import 'emergency_screen.dart';
 import 'map_screen.dart';
@@ -16,8 +18,6 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState
     extends State<MainNavigation> {
-  int currentIndex = 0;
-
   final List<Widget> screens = [
     DashboardScreen(),
     const MapScreen(),
@@ -27,6 +27,9 @@ class _MainNavigationState
 
   @override
   Widget build(BuildContext context) {
+    final appProvider = Provider.of<AppProvider>(context);
+    final currentIndex = appProvider.navigationIndex;
+
     return Scaffold(
       body: SafeArea(
         child: IndexedStack(
@@ -46,9 +49,7 @@ class _MainNavigationState
           unselectedFontSize: 12,
           type: BottomNavigationBarType.fixed,
           onTap: (index) {
-            setState(() {
-              currentIndex = index;
-            });
+            appProvider.updateNavigationIndex(index);
           },
           items: const [
             BottomNavigationBarItem(

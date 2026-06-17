@@ -6,9 +6,9 @@ import 'package:provider/provider.dart';
 import '../providers/location_provider.dart';
 import '../providers/system_status_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/app_provider.dart';
 
 import '../screens/system_status_screen.dart';
-import '../screens/emergency_screen.dart';
 import 'notifications_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -76,9 +76,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       Text(
                         "Live Map",
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const Text(
                         "Your current location and nearby safety zones",
@@ -184,9 +183,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       Text(
                         "System Monitor",
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const Text(
                         "Real-time status of your safety subsystems",
@@ -298,12 +296,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.push(
+                      final appProvider = Provider.of<AppProvider>(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const EmergencyScreen(),
-                        ),
+                        listen: false,
                       );
+                      appProvider.updateNavigationIndex(2);
                     },
 
                     style: ElevatedButton.styleFrom(
@@ -370,24 +367,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _zoneRow(String title, String value, {Color? valueColor}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+  // Widget _zoneRow(String title, String value, {Color? valueColor}) {
+  //   return Padding(
+  //     padding: const EdgeInsets.only(bottom: 6),
 
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //     child: Row(
+  //       mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
-        children: [
-          Text(title),
+  //       children: [
+  //         Text(title),
 
-          Text(
-            value,
-            style: TextStyle(fontWeight: FontWeight.bold, color: valueColor),
-          ),
-        ],
-      ),
-    );
-  }
+  //         Text(
+  //           value,
+  //           style: TextStyle(fontWeight: FontWeight.bold, color: valueColor),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 }
 
 Widget _buildSystemTile({

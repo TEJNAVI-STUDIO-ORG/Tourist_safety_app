@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../models/zone_model.dart';
-import '../models/notification_model.dart';
 
 import '../providers/location_provider.dart';
 import '../providers/notification_provider.dart';

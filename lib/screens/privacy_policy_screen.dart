@@ -59,7 +59,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   Text(
-                    "Aditya Vispute (aditya.vispute@gmail.com)",
+                    "tejnavi.studio@gmail.com",
                     style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
                   ),
                 ],

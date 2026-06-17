@@ -53,11 +53,11 @@ class TermsScreen extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    "Designed & Developed by Aditya Vispute",
+                    "For questions or support, contact:",
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                   Text(
-                    "aditya.vispute@gmail.com",
+                    "tejnavi.studio@gmail.com",
                     style: TextStyle(color: Colors.grey, fontSize: 11),
                   ),
                 ],

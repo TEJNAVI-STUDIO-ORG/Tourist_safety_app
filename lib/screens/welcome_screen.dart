@@ -136,16 +136,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                 child: Column(
                   children: [
                     const Text(
-                      "Designed & Developed by",
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 10,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      "Aditya Vispute",
+                      " Powered by TNS ",
                       style: TextStyle(
                         color: Colors.grey,
                         fontSize: 12,
@@ -154,7 +145,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                       ),
                     ),
                     
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     Text(
                       "© 2026 TouriSafe. All rights reserved.",
                       style: TextStyle(

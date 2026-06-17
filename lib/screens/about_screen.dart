@@ -74,25 +74,29 @@ class AboutScreen extends StatelessWidget {
             _buildFeatureItem(Icons.security, "Geofencing & Hazard Detection"),
             _buildFeatureItem(Icons.people, "Trusted Contact Management"),
             _buildFeatureItem(Icons.sync_problem, "Smart Fall & Crash Detection"),
+            const SizedBox(height: 24),
+            const Text(
+              "Developer Information",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              "Developed by Aditya Vispute",
+              style: TextStyle(fontSize: 15, height: 1.5),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Contact: tejnavi.studio@gmail.com",
+              style: TextStyle(fontSize: 15, height: 1.5),
+            ),
             const SizedBox(height: 40),
             const Center(
-              child: Column(
-                children: [
-                  Text(
-                    "Designed & Developed by Aditya Vispute",
-                    style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    "aditya.vispute@gmail.com",
-                    style: TextStyle(color: Colors.grey, fontSize: 11),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    "© 2026 TouriSafe. All rights reserved.",
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                ],
+              child: Text(
+                "© 2026 TouriSafe. All rights reserved.",
+                style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ),
           ],

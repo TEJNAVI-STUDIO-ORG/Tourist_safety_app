@@ -1,11 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'welcome_screen.dart';
-import '../services/service_health_monitor.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoadingScreen extends StatefulWidget {
-  const LoadingScreen({super.key});
+  const LoadingScreen({super.key, required this.onFinished});
+
+  final void Function(bool consent) onFinished;
 
   @override
   State<LoadingScreen> createState() => _LoadingScreenState();
@@ -28,15 +29,21 @@ class _LoadingScreenState extends State<LoadingScreen>
     );
 
     fadeIn = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: controller, curve: const Interval(0.0, 0.5, curve: Curves.easeIn)),
+      CurvedAnimation(
+        parent: controller,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
+      ),
     );
 
     slideUp = Tween<double>(begin: 20.0, end: 0.0).animate(
-      CurvedAnimation(parent: controller, curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic)),
+      CurvedAnimation(
+        parent: controller,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
+      ),
     );
 
     controller.forward();
-    
+
     // Start pulsing after initial fade in completes
     controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
@@ -48,24 +55,11 @@ class _LoadingScreenState extends State<LoadingScreen>
   }
 
   Future<void> startLoading() async {
-    // 1. Initial wait
-    await Future.delayed(const Duration(seconds: 1));
-    
-    // 2. Perform health verification
+    await Future.delayed(const Duration(seconds: 2));
+
     if (mounted) {
       setState(() {
-        _loadingText = "Verifying Safety Sensors...";
-      });
-    }
-    
-    // This will also trigger auto-repair (starting BG service)
-    await ServiceHealthMonitor.performFullVerification(context);
-    
-    await Future.delayed(const Duration(seconds: 1));
-    
-    if (mounted) {
-      setState(() {
-        _loadingText = "Securing Environment...";
+        _loadingText = "Preparing your experience...";
       });
     }
 
@@ -73,10 +67,9 @@ class _LoadingScreenState extends State<LoadingScreen>
 
     if (!mounted) return;
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-    );
+    final prefs = await SharedPreferences.getInstance();
+    final consent = prefs.getBool('consentAccepted') ?? false;
+    widget.onFinished(consent);
   }
 
   @override
@@ -88,7 +81,7 @@ class _LoadingScreenState extends State<LoadingScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
       body: AnimatedBuilder(
@@ -105,11 +98,17 @@ class _LoadingScreenState extends State<LoadingScreen>
                     // LOGO with pulsing effect and CIRCULAR CLIP
                     ScaleTransition(
                       scale: controller.isAnimating && controller.value > 0.5
-                          ? Tween<double>(begin: 1.0, end: 1.05).animate(controller)
+                          ? Tween<double>(
+                              begin: 1.0,
+                              end: 1.05,
+                            ).animate(controller)
                           : const AlwaysStoppedAnimation(1.0),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(30),
-                        child: Image.asset('assets/images/logo.jpeg', height: 250),
+                        child: Image.asset(
+                          'assets/images/logo.jpeg',
+                          height: 250,
+                        ),
                       ),
                     ),
 
