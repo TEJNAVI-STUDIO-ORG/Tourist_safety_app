@@ -416,7 +416,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
                     title: const Text("TouriSafe"),
 
-                    subtitle: const Text("Version 2.40.23"),
+                    subtitle: const Text("Version 2.40.30"),
                   ),
 
                   const Divider(height: 1),
