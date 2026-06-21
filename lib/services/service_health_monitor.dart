@@ -8,10 +8,13 @@ import '../providers/location_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/zone_provider.dart';
 import 'advanced_fall_detection_service.dart';
+import 'background_service.dart';
 import 'battery_optimization_service.dart';
 import '../providers/system_status_provider.dart';
 import '../providers/settings_provider.dart';
+import '../core/global.dart';
 import 'geofence_service.dart';
+import 'native_fall_bridge.dart';
 
 class ServiceHealthReport {
   final bool gpsEnabled;
@@ -46,15 +49,30 @@ class ServiceHealthReport {
 
 class ServiceHealthMonitor {
   static Timer? _watchdogTimer;
+  static Timer? _syncTimer;
 
   static void start(BuildContext context) {
     _watchdogTimer?.cancel();
+    _syncTimer?.cancel();
+
     // Verify on start
     performFullVerification(context);
+
+    // Fast sync so System Monitor fields stay current
+    _syncTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      final ctx = navigatorKey.currentContext;
+      if (ctx == null) return;
+      await Provider.of<SystemStatusProvider>(
+        ctx,
+        listen: false,
+      ).syncFromBackground();
+    });
     
     // Periodic check every 5 minutes
     _watchdogTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
-      await performFullVerification(context);
+      final ctx = navigatorKey.currentContext;
+      if (ctx == null) return;
+      await performFullVerification(ctx);
     });
   }
 
@@ -92,6 +110,14 @@ class ServiceHealthMonitor {
     // 4. Battery Optimization Check
     bool batteryOptimized = await BatteryOptimizationService.isOptimized();
 
+    // AUTO REPAIR
+    if (!bgRunning && !settings.privateMode) {
+      await startBackgroundService();
+      bgRunning = await service.isRunning();
+    }
+
+    await status.syncFromBackground();
+
     final report = ServiceHealthReport(
       gpsEnabled: gpsEnabled,
       locationPermission: locPerm,
@@ -103,16 +129,12 @@ class ServiceHealthMonitor {
       timestamp: DateTime.now(),
     );
 
-    // AUTO REPAIR
-    if (!bgRunning && !settings.privateMode) {
-      await service.startService();
-    }
-
     // Update Providers
     status.updateBackgroundService(
       active: bgRunning,
       status: bgRunning ? "Healthy" : "Dead (Restarting...)",
     );
+    status.updateHealthReport(report);
 
     return report;
   }
@@ -129,13 +151,13 @@ class ServiceHealthMonitor {
     // 1. REPAIR BACKGROUND SERVICE
     if (!report.backgroundServiceRunning) {
       debugPrint("Repairing Background Service...");
-      await FlutterBackgroundService().startService();
+      await startBackgroundService();
     }
 
     // 2. REPAIR GPS / LOCATION
     if (!report.gpsEnabled || !report.locationPermission || status.latitude == null) {
       debugPrint("Repairing Location Services...");
-      await location.startLiveTracking();
+      await location.resumeIfNeeded();
     } else if (DateTime.now().difference(status.lastGpsUpdate ?? DateTime(2000)).inMinutes > 2) {
       // Force refresh if stalled
       debugPrint("GPS stalled - requesting fresh lock...");
@@ -145,6 +167,7 @@ class ServiceHealthMonitor {
     // 3. REPAIR FALL DETECTION
     if (settings.fallDetection && (!status.fallDetectionActive || status.sensorStatus != 'active')) {
       debugPrint("Repairing Fall Detection...");
+      await NativeFallBridge.ensureRunning();
       AdvancedFallDetectionService.startDetection();
     }
 
@@ -174,5 +197,6 @@ class ServiceHealthMonitor {
 
   static void stop() {
     _watchdogTimer?.cancel();
+    _syncTimer?.cancel();
   }
 }

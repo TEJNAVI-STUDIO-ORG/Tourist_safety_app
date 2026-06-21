@@ -112,6 +112,92 @@ class SystemStatusProvider extends ChangeNotifier {
   // INITIALIZATION
   // =========================
   
+  Future<void> syncFromBackground() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final pulseStr = prefs.getString(keyLastPulse);
+    if (pulseStr != null) {
+      lastPulse = DateTime.tryParse(pulseStr);
+      lastActiveTimestamp = lastPulse;
+    }
+
+    final bgCheckStr = prefs.getString(keyLastBgCheck);
+    if (bgCheckStr != null) {
+      lastBackgroundCheck = DateTime.tryParse(bgCheckStr);
+    }
+
+    final uptimeStr = prefs.getString(keyServiceUptime);
+    if (uptimeStr != null) {
+      serviceUptime = DateTime.tryParse(uptimeStr);
+    }
+
+    final savedSensorStatus = prefs.getString(keySensorStatus);
+    if (savedSensorStatus != null && savedSensorStatus.isNotEmpty) {
+      sensorStatus = savedSensorStatus;
+    }
+
+    final bgRunning = prefs.getBool('bg_running') ?? false;
+    backgroundServiceActive = bgRunning;
+    if (bgRunning) {
+      backgroundServiceStatus = 'Foreground Service Running';
+    }
+
+    final bgTotalZones = prefs.getInt('bg_total_zones');
+    if (bgTotalZones != null) {
+      totalZones = bgTotalZones;
+    }
+
+    final activeInside = prefs.getInt('active_zone_count');
+    if (activeInside != null) {
+      enteredZones = activeInside;
+    }
+
+    final nextScanStr = prefs.getString('bg_next_scan');
+    if (nextScanStr != null) {
+      nextZoneScan = DateTime.tryParse(nextScanStr);
+    }
+
+    final lastFallSensor = prefs.getString('last_fall_sensor_update');
+    if (lastFallSensor != null) {
+      lastFallCheck = DateTime.tryParse(lastFallSensor);
+    }
+
+    final fallRunning = prefs.getBool('fall_detection_running');
+    if (fallRunning != null) {
+      fallDetectionActive = fallRunning;
+    }
+
+    final savedFallEvent = prefs.getString(keyLastFallEvent);
+    if (savedFallEvent != null) {
+      lastFallEvent = savedFallEvent;
+    }
+
+    final zoneEvent = prefs.getString('last_zone_event');
+    if (zoneEvent != null) {
+      lastZoneEvent = zoneEvent;
+      lastGeofenceCheck = DateTime.now();
+    }
+
+    final lastLocationUpdate = prefs.getString('last_location_update');
+    if (lastLocationUpdate != null) {
+      final parsed = DateTime.tryParse(lastLocationUpdate);
+      if (parsed != null &&
+          DateTime.now().difference(parsed) < const Duration(minutes: 5)) {
+        geofenceActive = true;
+        geofenceStatus = 'Background monitoring active';
+      }
+    }
+
+    notifyListeners();
+  }
+
+  void updateSensorStatus(String status) async {
+    sensorStatus = status;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(keySensorStatus, status);
+    notifyListeners();
+  }
+
   Future<void> loadCache() async {
     final prefs = await SharedPreferences.getInstance();
     

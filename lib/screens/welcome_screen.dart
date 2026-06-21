@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'main_navigation.dart';
+import '../services/startup_manager.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -105,15 +106,20 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isDark ? const Color(0xFFF97316) : Colors.red,
                       elevation: 4,
+                      // ignore: deprecated_member_use
                       shadowColor: (isDark ? const Color(0xFFF97316) : Colors.red).withOpacity(0.4),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    onPressed: () {
+                    onPressed: () async {
+                      await StartupManager.startAppInitialization(context);
+                      if (!mounted) return;
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (_) => const MainNavigation()),
+                        MaterialPageRoute(
+                          builder: (_) => const MainNavigation(),
+                        ),
                       );
                     },
                     child: const Text(

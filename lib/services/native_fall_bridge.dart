@@ -36,6 +36,18 @@ class NativeFallBridge {
     _initialized = false;
   }
 
+  /// Ensures the native fall-detection foreground service is running.
+  static Future<void> ensureRunning() async {
+    if (!_initialized) {
+      await initialize();
+      return;
+    }
+
+    try {
+      await _channel.invokeMethod<void>('startService');
+    } catch (_) {}
+  }
+
   /// Call this when the user confirms they are safe (from the dialog).
   static Future<void> markSafe() async {
     await _channel.invokeMethod<void>('clearFall');

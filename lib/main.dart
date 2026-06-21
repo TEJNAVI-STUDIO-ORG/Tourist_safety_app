@@ -2,22 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/themes/app_theme.dart';
 
 import 'screens/welcome_screen.dart';
-import 'services/notification_service.dart';
-import 'services/permission_service.dart';
-import 'services/advanced_fall_detection_service.dart';
-import 'services/native_fall_bridge.dart';
-import 'services/geofence_service.dart';
-import 'services/background_service.dart';
-import 'services/system_status_service.dart';
-import 'services/service_health_monitor.dart';
-import 'services/battery_optimization_service.dart';
+import 'screens/main_navigation.dart';
+import 'services/startup_manager.dart';
 
 import 'providers/notification_provider.dart';
 import 'providers/app_provider.dart';
@@ -36,15 +28,16 @@ import './core/global.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  final locationProvider = LocationProvider();
+  await locationProvider.restoreFromBackground();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AppProvider()),
-        ChangeNotifierProvider(create: (_) => LocationProvider()),
+        ChangeNotifierProvider.value(value: locationProvider),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
-        ChangeNotifierProvider(
-          create: (_) => NotificationProvider()..loadNotifications(),
-        ),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => SystemStatusProvider()),
         ChangeNotifierProvider(create: (_) => ZoneProvider()),
       ],
@@ -60,27 +53,50 @@ class TouristSafeApp extends StatefulWidget {
   State<TouristSafeApp> createState() => _TouristSafeAppState();
 }
 
-class _TouristSafeAppState extends State<TouristSafeApp> {
+class _TouristSafeAppState extends State<TouristSafeApp>
+    with WidgetsBindingObserver {
   bool _consentLoaded = false;
   bool _hasConsent = false;
-  bool _initializationStarted = false;
+  bool _setupComplete = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
   }
 
-  void _handleLoadingComplete(bool consent) {
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        unawaited(StartupManager.onAppResumed(context));
+      }
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      // UI geolocator will detach when the activity is destroyed; background
+      // service keeps updating last_lat/last_lng in SharedPreferences.
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        unawaited(context.read<LocationProvider>().restoreFromBackground());
+      }
+    }
+  }
+
+  void _handleLoadingComplete(bool consent, bool setupComplete) {
     if (!mounted) return;
 
     setState(() {
       _consentLoaded = true;
       _hasConsent = consent;
+      _setupComplete = setupComplete;
     });
-
-    if (consent) {
-      _startAppInitialization();
-    }
   }
 
   Future<void> _acceptConsent() async {
@@ -91,72 +107,6 @@ class _TouristSafeAppState extends State<TouristSafeApp> {
     setState(() {
       _hasConsent = true;
     });
-
-    _startAppInitialization();
-  }
-
-  Future<void> _startAppInitialization() async {
-    if (_initializationStarted) return;
-    _initializationStarted = true;
-
-    final widgetContext = context;
-    final location = widgetContext.read<LocationProvider>();
-    final zone = widgetContext.read<ZoneProvider>();
-    final status = widgetContext.read<SystemStatusProvider>();
-    final settings = widgetContext.read<SettingsProvider>();
-    final notification = widgetContext.read<NotificationProvider>();
-
-    location.connectSystemStatus(status);
-    settings.setSystemStatusProvider(status);
-
-    zone.triggerInitialLoad(
-      context: widgetContext,
-      locationProvider: location,
-      statusProvider: status,
-    );
-
-    await PermissionService.requestAllPermissions();
-    unawaited(
-      NotificationService.initialize().catchError((Object e, StackTrace st) {
-        debugPrint('NotificationService.initialize failed: $e\n$st');
-      }),
-    );
-
-    await initializeService();
-    final rootContext = navigatorKey.currentContext;
-    if (rootContext != null) {
-      // ignore: use_build_context_synchronously
-      ServiceHealthMonitor.start(rootContext);
-    }
-
-    await Permission.activityRecognition.request();
-    final statusContext = navigatorKey.currentContext;
-    if (statusContext != null) {
-      // ignore: use_build_context_synchronously
-      await SystemStatusService.initializeAllStatus(statusContext);
-    }
-
-    GeofenceService.startMonitoring(
-      locationProvider: location,
-      zoneProvider: zone,
-      notificationProvider: notification,
-    );
-
-    unawaited(location.startLiveTracking());
-
-    if (navigatorKey.currentContext != null) {
-      final batteryContext = navigatorKey.currentContext!;
-      unawaited(
-        BatteryOptimizationService.checkAndShowOptimizationDialog(
-      // ignore: use_build_context_synchronously
-          batteryContext,
-        ),
-      );
-
-      await NativeFallBridge.initialize();
-      // ignore: use_build_context_synchronously
-      AdvancedFallDetectionService.initialize(batteryContext);
-    }
   }
 
   @override
@@ -173,16 +123,33 @@ class _TouristSafeAppState extends State<TouristSafeApp> {
         '/privacy': (_) => const PrivacyPolicyScreen(),
         '/terms': (_) => const TermsScreen(),
       },
-      home: !_consentLoaded
-          ? LoadingScreen(onFinished: _handleLoadingComplete)
-          : _hasConsent
-          ? const WelcomeScreen()
-          : ConsentScreen(
-              onAccept: _acceptConsent,
-              onExit: () {
-                SystemNavigator.pop();
-              },
-            ),
+      home: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 500),
+        switchInCurve: Curves.easeInOut,
+        switchOutCurve: Curves.easeInOut,
+        transitionBuilder: (child, animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+        },
+        child: !_consentLoaded
+            ? LoadingScreen(
+                key: const ValueKey('loading'),
+                onFinished: _handleLoadingComplete,
+              )
+            : !_hasConsent
+            ? ConsentScreen(
+                key: const ValueKey('consent'),
+                onAccept: _acceptConsent,
+                onExit: () {
+                  SystemNavigator.pop();
+                },
+              )
+            : _setupComplete
+            ? const MainNavigation(key: ValueKey('main'))
+            : const WelcomeScreen(key: ValueKey('welcome')),
+      ),
     );
   }
 }

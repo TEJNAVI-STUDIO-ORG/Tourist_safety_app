@@ -20,5 +20,10 @@ class FallActionReceiver : BroadcastReceiver() {
         // Clear the pending flag so Flutter doesn't re-show the dialog on next open
         context.getSharedPreferences(FallDetectionService.PREF_NAME, Context.MODE_PRIVATE)
             .edit().putBoolean(FallDetectionService.KEY_PENDING, false).apply()
+
+        // resets service internal state
+        val serviceIntent = Intent(context, FallDetectionService::class.java)
+        .setAction(FallDetectionService.ACTION_SAFE)
+        context.startService(serviceIntent)
     }
 }

@@ -30,6 +30,17 @@ class NotificationService {
     showBadge: false,
   );
 
+  /// Creates Android channels only. Safe to call from the background isolate.
+  static Future<void> ensureAndroidChannels() async {
+    final androidPlugin = flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    await androidPlugin?.createNotificationChannel(_alertChannel);
+    await androidPlugin?.createNotificationChannel(trackingChannel);
+  }
+
+  /// Full plugin setup for the main UI isolate only.
   static Future<void> initialize() async {
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -40,22 +51,15 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.initialize(
       settings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        if (response.actionId == 'safe_action' || response.actionId == 'leave_action') {
+        if (response.actionId == 'safe_action' ||
+            response.actionId == 'leave_action') {
           FlutterBackgroundService().invoke('stop_emergency');
         }
       },
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
 
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(_alertChannel);
-
-    await flutterLocalNotificationsPlugin
-    .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>()
-    ?.createNotificationChannel(trackingChannel);
+    await ensureAndroidChannels();
   }
 
   @pragma('vm:entry-point')

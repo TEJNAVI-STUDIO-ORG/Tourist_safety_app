@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/location_provider.dart';
@@ -39,11 +38,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final locationProvider = Provider.of<LocationProvider>(context);
+    final mapCenter = locationProvider.mapCenter;
 
-    final currentLocation = LatLng(
-      locationProvider.latitude ?? 18.5204,
-      locationProvider.longitude ?? 73.8567,
-    );
+    if (mapCenter == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('TouriSafe')),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Acquiring your location...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final currentLocation = mapCenter;
 
     return Scaffold(
       appBar: AppBar(

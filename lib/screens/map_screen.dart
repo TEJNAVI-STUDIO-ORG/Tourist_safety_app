@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 
 import 'package:provider/provider.dart';
 
@@ -68,10 +67,25 @@ class _MapScreenState extends State<MapScreen> {
     final zoneProvider = Provider.of<ZoneProvider>(context);
     final statusProvider = Provider.of<SystemStatusProvider>(context);
 
-    final currentLocation = LatLng(
-      locationProvider.latitude ?? 18.5204,
-      locationProvider.longitude ?? 73.8567,
-    );
+    final mapCenter = locationProvider.mapCenter;
+
+    if (mapCenter == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Tracking Map')),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Acquiring your location...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final currentLocation = mapCenter;
 
     if (firstMapMove) {
       firstMapMove = false;

@@ -119,78 +119,6 @@ class SystemStatusScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
 
             children: [
-              // =========================
-              // HEALTH REPORT
-              // =========================
-              if (status.lastHealthReport != null)
-                buildTile(
-                  title: "System Health Report",
-                  value: "Overall: ${status.lastHealthReport!.isHealthy ? "HEALTHY" : "ISSUES DETECTED"}\n\n"
-                      "GPS HW: ${status.lastHealthReport!.gpsEnabled ? "OK" : "OFF"}\n"
-                      "Location Perm: ${status.lastHealthReport!.locationPermission ? "OK" : "MISSING"}\n"
-                      "Background Perm: ${status.lastHealthReport!.backgroundPermission ? "OK" : "MISSING"}\n"
-                      "SMS Perm: ${status.lastHealthReport!.smsPermission ? "OK" : "MISSING"}\n"
-                      "Notification Perm: ${status.lastHealthReport!.notificationPermission ? "OK" : "MISSING"}\n"
-                      "Background Service: ${status.lastHealthReport!.backgroundServiceRunning ? "RUNNING" : "DEAD"}\n"
-                      "Battery Optimization: ${status.lastHealthReport!.batteryOptimizationDisabled ? "DISABLED" : "ENABLED (FIX)"}\n"
-                      "Last Check: ${formatTime(status.lastHealthReport!.timestamp)}",
-                  icon: status.lastHealthReport!.isHealthy ? Icons.health_and_safety : Icons.error_outline,
-                  active: status.lastHealthReport!.isHealthy,
-                ),
-
-              if (status.lastHealthReport != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      // Show loading dialog
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (ctx) => const Center(
-                          child: Card(
-                            child: Padding(
-                              padding: EdgeInsets.all(20),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  CircularProgressIndicator(),
-                                  SizedBox(height: 15),
-                                  Text("Repairing Services..."),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-
-                      try {
-                        await ServiceHealthMonitor.checkAndRepair(context);
-                      } finally {
-                        if (context.mounted) Navigator.pop(context);
-                      }
-                      
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Repair sequence completed. Checking health..."),
-                            backgroundColor: Colors.blueAccent,
-                          ),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.build_circle),
-                    label: const Text("SMART REPAIR & RESTART"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-
-              const SizedBox(height: 10),
 
               // =========================
               // LIVE STATUS HEADER
@@ -265,6 +193,81 @@ class SystemStatusScreen extends StatelessWidget {
               ),
 
               const SizedBox(height: 18),
+
+              // =========================
+              // HEALTH REPORT
+              // =========================
+              if (status.lastHealthReport != null)
+                buildTile(
+                  title: "System Health Report",
+                  value: "Overall: ${status.lastHealthReport!.isHealthy ? "HEALTHY" : "ISSUES DETECTED"}\n\n"
+                      "GPS : ${status.lastHealthReport!.gpsEnabled ? "OK" : "OFF"}\n"
+                      "Location Permission: ${status.lastHealthReport!.locationPermission ? "OK" : "MISSING"}\n"
+                      "Background Permission: ${status.lastHealthReport!.backgroundPermission ? "OK" : "MISSING"}\n"
+                      "SMS Permission: ${status.lastHealthReport!.smsPermission ? "OK" : "MISSING"}\n"
+                      "Notification Permission : ${status.lastHealthReport!.notificationPermission ? "OK" : "MISSING"}\n"
+                      "Background Service: ${status.lastHealthReport!.backgroundServiceRunning ? "RUNNING" : "DEAD"}\n"
+                      "Battery Optimization: ${status.lastHealthReport!.batteryOptimizationDisabled ? "DISABLED" : "ENABLED (FIX)"}\n"
+                      "Last Check: ${formatTime(status.lastHealthReport!.timestamp)}",
+                  icon: status.lastHealthReport!.isHealthy ? Icons.health_and_safety : Icons.error_outline,
+                  active: status.lastHealthReport!.isHealthy,
+                ),
+
+              if (status.lastHealthReport != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      // Show loading dialog
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (ctx) => const Center(
+                          child: Card(
+                            child: Padding(
+                              padding: EdgeInsets.all(20),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(),
+                                  SizedBox(height: 15),
+                                  Text("Repairing Services..."),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+
+                      try {
+                        await ServiceHealthMonitor.checkAndRepair(context);
+                      } finally {
+                        if (context.mounted) Navigator.pop(context);
+                      }
+                      
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Repair sequence completed. Checking health..."),
+                            backgroundColor: Colors.blueAccent,
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.build_circle),
+                    label: const Text("SMART REPAIR & RESTART"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 10),
+
+              
 
               // =========================
               // GPS

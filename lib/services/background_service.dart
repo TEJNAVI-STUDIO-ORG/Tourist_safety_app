@@ -5,6 +5,7 @@ import 'dart:ui';
 
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -33,8 +34,8 @@ Future<void> initializeService() async {
   await service.configure(
     androidConfiguration: AndroidConfiguration(
       onStart: onStart,
-      autoStart: true,
-      autoStartOnBoot: true,
+      autoStart: false,
+      autoStartOnBoot: false,
       isForegroundMode: true,
       notificationChannelId: 'guardian_tracking',
       initialNotificationTitle: 'Guardian Pulse',
@@ -44,6 +45,19 @@ Future<void> initializeService() async {
     ),
     iosConfiguration: IosConfiguration(),
   );
+}
+
+/// Starts the foreground background service after channels and notification
+/// permission are ready. Safe to call multiple times.
+Future<void> startBackgroundService() async {
+  final service = FlutterBackgroundService();
+  if (await service.isRunning()) return;
+
+  if (!await Permission.notification.isGranted) {
+    return;
+  }
+
+  await service.startService();
 }
 
 Future<void> syncZonesForBackground(List<ZoneModel> zones) async {
@@ -59,6 +73,7 @@ Future<void> syncZonesForBackground(List<ZoneModel> zones) async {
 }
 
 StreamSubscription<AccelerometerEvent>? _fallSubscription;
+StreamSubscription<Position>? _locationSubscription;
 DateTime? _lastFallSensorUpdate;
 bool _isFallProcessing = false;
 DateTime? _freeFallStartTime;
@@ -69,24 +84,33 @@ void onStart(ServiceInstance service) async {
   print("BACKGROUND SERVICE STARTED");
 
   DartPluginRegistrant.ensureInitialized();
-  await NotificationService.initialize();
 
-  final prefs = await SharedPreferences.getInstance();
-
-  await prefs.setBool(BackgroundServiceKeys.bgRunning, true);
-  await prefs.setString(BackgroundServiceKeys.lastHeartbeat, DateTime.now().toIso8601String());
-  await prefs.setString('bg_service_uptime', DateTime.now().toIso8601String());
-
-  await prefs.setBool('fall_detection_running', true);
+  // Channels must exist before promoting to foreground (Android 13+).
+  await NotificationService.ensureAndroidChannels();
 
   if (service is AndroidServiceInstance) {
-    service.setAsForegroundService();
-    
     await service.setForegroundNotificationInfo(
       title: "Guardian Pulse",
       content: "Safety tracking active",
     );
+    service.setAsForegroundService();
   }
+
+  final prefs = await SharedPreferences.getInstance();
+
+  await prefs.setBool(BackgroundServiceKeys.bgRunning, true);
+  await prefs.setString(
+    BackgroundServiceKeys.lastHeartbeat,
+    DateTime.now().toIso8601String(),
+  );
+  await prefs.setString('bg_service_uptime', DateTime.now().toIso8601String());
+
+  await prefs.setBool('fall_detection_running', true);
+  await prefs.setString(
+    BackgroundServiceKeys.nextScan,
+    DateTime.now().add(const Duration(minutes: 5)).toIso8601String(),
+  );
+  await prefs.setString('bg_last_check', DateTime.now().toIso8601String());
 
   service.on('refresh_zones').listen((_) async {
     await _loadZones();
@@ -100,15 +124,19 @@ void onStart(ServiceInstance service) async {
   });
 
   await _loadZones();
+  _startBackgroundLocationTracking();
   _startFallDetection(service);
 
   // Heartbeat every 1 minute
   Timer.periodic(const Duration(minutes: 1), (timer) async {
-    await prefs.setString(BackgroundServiceKeys.lastHeartbeat, DateTime.now().toIso8601String());
-    
+    await prefs.setString(
+      BackgroundServiceKeys.lastHeartbeat,
+      DateTime.now().toIso8601String(),
+    );
+
     // Check if fall detection needs restart
     final now = DateTime.now();
-    if (_lastFallSensorUpdate == null || 
+    if (_lastFallSensorUpdate == null ||
         now.difference(_lastFallSensorUpdate!).inSeconds > 30) {
       print("FALL SENSOR STALLED - RESTARTING...");
       await prefs.setString('fall_sensor_status', 'stalled');
@@ -140,7 +168,7 @@ void onStart(ServiceInstance service) async {
       final safe = activeCount == 0 ? 'yes' : 'no';
       final fallStatus = fallOn ? 'on ($sensorStatus)' : 'off';
 
-        final content =
+      final content =
           'gps: ${gpsActive ? 'active' : 'inactive'} | zones: $totalZones | inside: $activeCount | fall: $fallStatus | safe: $safe';
 
       if (service is AndroidServiceInstance) {
@@ -181,9 +209,44 @@ void onStart(ServiceInstance service) async {
   });
 }
 
-void _startFallDetection(ServiceInstance service) {
+void _startBackgroundLocationTracking() {
+  _locationSubscription?.cancel();
+
+  _locationSubscription = Geolocator.getPositionStream(
+    locationSettings: const LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 5,
+    ),
+  ).listen(
+    (position) async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('last_lat', position.latitude);
+      await prefs.setDouble('last_lng', position.longitude);
+      await prefs.setDouble('last_speed', position.speed);
+      await prefs.setDouble('last_accuracy', position.accuracy);
+      await prefs.setString(
+        'last_location_update',
+        DateTime.now().toIso8601String(),
+      );
+    },
+    onError: (_) {
+      _locationSubscription?.cancel();
+      _locationSubscription = null;
+      Timer(const Duration(seconds: 5), _startBackgroundLocationTracking);
+    },
+  );
+}
+
+void _startFallDetection(ServiceInstance service) async {
   _fallSubscription?.cancel();
-  
+
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('fall_sensor_status', 'active');
+  await prefs.setString(
+    'last_fall_sensor_update',
+    DateTime.now().toIso8601String(),
+  );
+
   _fallSubscription = accelerometerEventStream().listen((event) async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool('privateMode') ?? false) {
@@ -192,11 +255,14 @@ void _startFallDetection(ServiceInstance service) {
     }
 
     _lastFallSensorUpdate = DateTime.now();
-    
+
     // Periodically save to prefs so UI can see sensor is alive
     if (_lastFallSensorUpdate!.second % 10 == 0) {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('last_fall_sensor_update', _lastFallSensorUpdate!.toIso8601String());
+      await prefs.setString(
+        'last_fall_sensor_update',
+        _lastFallSensorUpdate!.toIso8601String(),
+      );
       await prefs.setString('fall_sensor_status', 'active');
     }
 
@@ -213,7 +279,9 @@ void _startFallDetection(ServiceInstance service) {
 
     // Impact detection after free-fall
     if (_freeFallStartTime != null && magnitude > 25) {
-      final diff = DateTime.now().difference(_freeFallStartTime!).inMilliseconds;
+      final diff = DateTime.now()
+          .difference(_freeFallStartTime!)
+          .inMilliseconds;
 
       if (diff < 1500) {
         _isFallProcessing = true;
@@ -229,12 +297,19 @@ Future<void> _handleBackgroundFall(ServiceInstance service) async {
     body: 'We detected a possible fall. Tap to confirm you are safe.',
     fullScreen: false,
     actions: [
-      const AndroidNotificationAction('safe_action', "I'M SAFE", showsUserInterface: false),
+      const AndroidNotificationAction(
+        'safe_action',
+        "I'M SAFE",
+        showsUserInterface: false,
+      ),
     ],
   );
 
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('status_last_fall_event', 'Fall detected at ${_formatTime(DateTime.now())} (Background)');
+  await prefs.setString(
+    'status_last_fall_event',
+    'Fall detected at ${_formatTime(DateTime.now())} (Background)',
+  );
 
   await _triggerBackgroundSOS('possible fall', countdownSeconds: 15);
 
@@ -277,7 +352,7 @@ Future<void> _refreshZonesFromOverpass() async {
     // =========================================================================
     final lastLat = prefs.getDouble('cached_zones_lat');
     final lastLng = prefs.getDouble('cached_zones_lng');
-    
+
     if (lastLat != null && lastLng != null) {
       final distance = Geolocator.distanceBetween(
         position.latitude,
@@ -285,7 +360,7 @@ Future<void> _refreshZonesFromOverpass() async {
         lastLat,
         lastLng,
       );
-      
+
       // If user moved less than 600 meters, skip API call
       if (distance < 600) {
         print("BG: User hasn't moved enough ($distance m). Skipping refresh.");
@@ -325,14 +400,12 @@ Future<void> _loadZones() async {
 Future<void> _runGeofenceTick(ServiceInstance service) async {
   final prefs = await SharedPreferences.getInstance();
   if (prefs.getBool('privateMode') ?? false) {
-    await prefs.setString('last_zone_event', 'Monitoring Suspended (Privacy Mode)');
+    await prefs.setString(
+      'last_zone_event',
+      'Monitoring Suspended (Privacy Mode)',
+    );
     return;
   }
-  
-  if (_cachedZones.isEmpty) return;
-
-  if (!(prefs.getBool('geofenceAlerts') ?? true)) return;
-  if (!(prefs.getBool('pushNotifications') ?? true)) return;
 
   final permission = await Geolocator.checkPermission();
   if (permission == LocationPermission.denied ||
@@ -343,17 +416,29 @@ Future<void> _runGeofenceTick(ServiceInstance service) async {
   final enabled = await Geolocator.isLocationServiceEnabled();
   if (!enabled) return;
 
-  final activeZoneIds =
-      (prefs.getStringList(BackgroundServiceKeys.activeZones) ?? []).toSet();
+  Position position;
+  try {
+    position = await Geolocator.getCurrentPosition();
+  } catch (_) {
+    return;
+  }
 
-  final position = await Geolocator.getCurrentPosition();
-
+  await prefs.setDouble('last_lat', position.latitude);
+  await prefs.setDouble('last_lng', position.longitude);
   await prefs.setDouble('last_speed', position.speed);
   await prefs.setDouble('last_accuracy', position.accuracy);
   await prefs.setString(
     'last_location_update',
     DateTime.now().toIso8601String(),
   );
+
+  if (_cachedZones.isEmpty) return;
+
+  if (!(prefs.getBool('geofenceAlerts') ?? true)) return;
+  if (!(prefs.getBool('pushNotifications') ?? true)) return;
+
+  final activeZoneIds =
+      (prefs.getStringList(BackgroundServiceKeys.activeZones) ?? []).toSet();
 
   final now = DateTime.now();
 
@@ -391,7 +476,10 @@ Future<void> _runGeofenceTick(ServiceInstance service) async {
       );
 
       if (severity.toLowerCase() == 'danger') {
-        await _triggerBackgroundSOS('entered danger zone ($zoneName)', countdownSeconds: 30);
+        await _triggerBackgroundSOS(
+          'entered danger zone ($zoneName)',
+          countdownSeconds: 30,
+        );
       }
     } else if (!isInside && wasInside) {
       activeZoneIds.remove(zoneId);
@@ -426,10 +514,20 @@ Future<void> _emitZoneNotification({
     body: body,
     notificationId: nid,
     fullScreen: false,
-    actions: severity.toLowerCase() == 'danger' ? [
-      const AndroidNotificationAction('safe_action', "I'M SAFE", showsUserInterface: false),
-      const AndroidNotificationAction('leave_action', "LEAVE ZONE", showsUserInterface: false),
-    ] : null,
+    actions: severity.toLowerCase() == 'danger'
+        ? [
+            const AndroidNotificationAction(
+              'safe_action',
+              "I'M SAFE",
+              showsUserInterface: false,
+            ),
+            const AndroidNotificationAction(
+              'leave_action',
+              "LEAVE ZONE",
+              showsUserInterface: false,
+            ),
+          ]
+        : null,
   );
 
   final prefs = await SharedPreferences.getInstance();
@@ -448,38 +546,46 @@ Future<void> _emitZoneNotification({
   await prefs.setStringList(BackgroundServiceKeys.notifications, existing);
 }
 
-Future<void> _triggerBackgroundSOS(String reason, {int countdownSeconds = 30}) async {
+Future<void> _triggerBackgroundSOS(
+  String reason, {
+  int countdownSeconds = 30,
+}) async {
   final prefs = await SharedPreferences.getInstance();
   if (!(prefs.getBool('smsAlerts') ?? true)) return;
-  
+
   _isEmergencyPending = true;
-  
+
   // Wait for countdown
   await Future.delayed(Duration(seconds: countdownSeconds));
-  
+
   // Check if still pending (not cancelled by user)
   if (!_isEmergencyPending) return;
-  
+
   _isEmergencyPending = false;
 
   final contactsRaw = prefs.getStringList('contacts') ?? [];
   if (contactsRaw.isEmpty) return;
-  
+
   final recipients = contactsRaw.map((c) {
     final map = jsonDecode(c) as Map<String, dynamic>;
     return map['phone'] as String;
   }).toList();
-  
-  String template = prefs.getString('sosMessageTemplate') ?? 
-    "🚨 EMERGENCY SOS!\n\nI need help immediately.\n\nMy live location:\n{location}";
-  
+
+  String template =
+      prefs.getString('sosMessageTemplate') ??
+      "🚨 EMERGENCY SOS!\n\nI need help immediately.\n\nMy live location:\n{location}";
+
   try {
     final pos = await Geolocator.getCurrentPosition();
-    final locationText = "https://maps.google.com/?q=${pos.latitude},${pos.longitude}";
+    final locationText =
+        "https://maps.google.com/?q=${pos.latitude},${pos.longitude}";
     final message = template.replaceAll("{location}", locationText);
-    
+
     await SmsService.sendSOS(recipients: recipients, message: message);
-    await prefs.setString('status_last_fall_event', 'Background SOS triggered: $reason');
+    await prefs.setString(
+      'status_last_fall_event',
+      'Background SOS triggered: $reason',
+    );
   } catch (e) {
     print("Background SOS Error: $e");
   }

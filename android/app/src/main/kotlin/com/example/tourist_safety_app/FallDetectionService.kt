@@ -30,10 +30,10 @@ class FallDetectionService : Service(), SensorEventListener {
     private val handler = Handler(Looper.getMainLooper())
 
     // Fall state
-    private var freeFallTime: Long? = null
-    private var isProcessingFall = false
-    private var immobilityCheckActive = false
-    private var movementDuringImmobility = false
+    @Volatile private var freeFallTime: Long? = null
+    @Volatile private var isProcessingFall = false
+    @Volatile private var immobilityCheckActive = false
+    @Volatile private var movementDuringImmobility = false
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -63,13 +63,18 @@ class FallDetectionService : Service(), SensorEventListener {
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         accelerometer?.let { sensor ->
-            sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+            sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_GAME)
         }
     }
 
     // START_STICKY → system restarts the service if it is killed for memory
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
-
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // ✅ ADD THIS BLOCK
+        if (intent?.action == ACTION_SAFE) {
+            clearFallAlert()
+        }
+        return START_STICKY
+    }
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
@@ -93,7 +98,7 @@ class FallDetectionService : Service(), SensorEventListener {
 
         // Step 2 — high-impact spike within 1.5 s of free-fall
         val ff = freeFallTime
-        if (ff != null && magnitude > 25f && (System.currentTimeMillis() - ff) < 1500) {
+        if (ff != null && magnitude > 33f && (System.currentTimeMillis() - ff) < 1500) {
             isProcessingFall = true
             freeFallTime = null
             startImmobilityCheck()
@@ -199,12 +204,17 @@ class FallDetectionService : Service(), SensorEventListener {
         )
     }
 
-    private fun buildMonitorNotification(): Notification =
-        NotificationCompat.Builder(this, RUNNING_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setContentTitle("TouriSafe")
-            .setContentText("Fall detection active")
-            .setPriority(NotificationCompat.PRIORITY_MIN)
-            .setOngoing(true)
-            .build()
+
+
+    private fun buildMonitorNotification(): Notification {
+    // Ensure channel exists before building notification
+    createNotificationChannels()
+    return NotificationCompat.Builder(this, RUNNING_CHANNEL_ID)
+        .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+        .setContentTitle("TouriSafe")
+        .setContentText("Fall detection active")
+        .setPriority(NotificationCompat.PRIORITY_MIN)
+        .setOngoing(true)
+        .build()
+        }
 }

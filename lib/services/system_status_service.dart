@@ -2,14 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'dart:async';
 
 import '../providers/system_status_provider.dart';
+import '../core/global.dart';
 import '../providers/location_provider.dart';
 import '../providers/zone_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/sos_service.dart';
 
 class SystemStatusService {
+  static Timer? _liveSyncTimer;
+
+  /// Polls SharedPreferences written by the background isolate and refreshes UI.
+  static void startLiveSync(BuildContext context) {
+    _liveSyncTimer?.cancel();
+
+    final provider = Provider.of<SystemStatusProvider>(context, listen: false);
+    unawaited(provider.syncFromBackground());
+
+    _liveSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      final ctx = navigatorKey.currentContext;
+      if (ctx == null) return;
+      Provider.of<SystemStatusProvider>(ctx, listen: false).syncFromBackground();
+    });
+  }
+
+  static void stopLiveSync() {
+    _liveSyncTimer?.cancel();
+    _liveSyncTimer = null;
+  }
+
   // =========================
   // INITIAL STATUS CHECK
   // =========================
@@ -20,6 +43,7 @@ class SystemStatusService {
     
     // Load cached location and Overpass status first
     await systemProvider.loadCache();
+    await systemProvider.syncFromBackground();
     
     if (settingsProvider.privateMode) {
       systemProvider.updateGps(active: false, status: "Disabled by Privacy Mode");
@@ -64,6 +88,8 @@ class SystemStatusService {
     // Initialize background service status
     final isRunning = await FlutterBackgroundService().isRunning();
     updateBackgroundService(context, active: isRunning);
+
+    startLiveSync(context);
   }
 
   // =========================

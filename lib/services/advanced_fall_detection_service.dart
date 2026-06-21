@@ -92,7 +92,13 @@ class AdvancedFallDetectionService {
       // persist last sensor update for status monitoring
       try {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('last_fall_sensor_update', lastSensorUpdate!.toIso8601String());
+        await prefs.setString(
+          'last_fall_sensor_update',
+          lastSensorUpdate!.toIso8601String(),
+        );
+        await prefs.setString('fall_sensor_status', 'active');
+        Provider.of<SystemStatusProvider>(context, listen: false)
+            .updateSensorStatus('active');
       } catch (_) {}
 
       if (magnitude < 2.0) {
