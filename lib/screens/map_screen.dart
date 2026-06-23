@@ -78,6 +78,7 @@ class _MapScreenState extends State<MapScreen> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
+              Text('Please ensure GPS is Turned On from Navigation'),
               Text('Acquiring your location...'),
             ],
           ),
