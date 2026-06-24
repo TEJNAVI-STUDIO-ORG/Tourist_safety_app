@@ -176,7 +176,7 @@ class _LoadingScreenState extends State<LoadingScreen>
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(30),
                         child: Image.asset(
-                          'assets/images/logo.jpeg',
+                          'assets/images/logo.png',
                           height: 250,
                         ),
                       ),

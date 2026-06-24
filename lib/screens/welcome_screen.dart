@@ -66,7 +66,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                   child: Center(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(40),
-                      child: Image.asset('assets/images/logo.jpeg', height: 300),
+                      child: Image.asset('assets/images/logo.png', height: 300),
                     ),
                   ),
                 ),

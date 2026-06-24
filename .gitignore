@@ -54,5 +54,4 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-Resources/release.md
 firebase-tools-instant-win.exe
