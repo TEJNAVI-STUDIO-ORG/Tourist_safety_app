@@ -176,7 +176,12 @@ class _SettingsScreenState extends State<SettingsScreen>
                       ),
                       backgroundColor: _flashRequested
                           ? _flashColorAnimation.value
-                          : const Color.fromARGB(255, 233, 220, 255),
+                          : (settingsProvider.darkMode
+                                ? const Color.fromARGB(255, 96, 70, 140)
+                                : const Color.fromARGB(255, 233, 220, 255)),
+                      foregroundColor: settingsProvider.darkMode
+                          ? Colors.white
+                          : Colors.black,
                     ),
                     onPressed: () {
                       showContactDialog(context, settingsProvider);
